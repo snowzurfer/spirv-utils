@@ -12,12 +12,16 @@ enum class Result {
   SPV_ERROR_INTERNAL = -1,
 };
 
+typedef void(*TokenFilterCallbackFn) (const class TokenStream *stream);
+
 class TokenStream {
  public:
   TokenStream(const void *module_stream, size_t binary_size);
   ~TokenStream();
 
-  Result ParseModule(const void *module_stream, size_t binary_size);
+  void ParseModule(const void *module_stream, size_t binary_size);
+
+  void FilterModule(TokenFilterCallbackFn callback_fn);
 
   bool IsValid() const;
 
@@ -33,6 +37,7 @@ class TokenStream {
   void Reset();
 
   void InsertTokenInTable(size_t offset);
+  Result ParseModuleInternal(const void *module_stream, size_t binary_size);
   Result ParseToken(const uint32_t *bin_stream, size_t start_index,
                     size_t *words_count);
   uint32_t PeekAt(const uint32_t *bin_stream, size_t index);

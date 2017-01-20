@@ -15,7 +15,7 @@ TokenStream::TokenStream(const void *module_stream, size_t binary_size)
     : words_count_(0),
       parse_result_(Result::SPV_ERROR_INTERNAL),
       ops_table_() {
-  parse_result_ = ParseModule(module_stream, binary_size);
+  ParseModule(module_stream, binary_size);
 }
 
 TokenStream::~TokenStream() {}
@@ -36,8 +36,13 @@ void TokenStream::Reset() {
   parse_result_ = Result::SPV_ERROR_INTERNAL;
   ops_table_.clear();
 }
+  
+void TokenStream::ParseModule(const void *module_stream, size_t binary_size) {
+  parse_result_ = ParseModuleInternal(module_stream, binary_size);
+}
 
-Result TokenStream::ParseModule(const void *module_stream, size_t binary_size) {
+Result TokenStream::ParseModuleInternal(const void *module_stream,
+                                        size_t binary_size) {
   Reset();
 
   words_count_ = binary_size / 4;
@@ -72,6 +77,9 @@ Result TokenStream::ParseModule(const void *module_stream, size_t binary_size) {
     word_index += inst_word_count;
   }
 
+  // Append end terminator to table
+  InsertTokenInTable(0);
+
   return Result::SPV_SUCCESS;
 }
   
@@ -97,6 +105,12 @@ Result TokenStream::ParseToken(const uint32_t *bin_stream, size_t start_index,
   *words_count = static_cast<size_t>(inst_word_count);
 
   return Result::SPV_SUCCESS;
+}
+
+void TokenStream::FilterModule(TokenFilterCallbackFn callback_fn) {
+  if (!IsValid()) {
+    return;
+  }
 }
 
 uint32_t TokenStream::PeekAt(const uint32_t *bin_stream, size_t index) {

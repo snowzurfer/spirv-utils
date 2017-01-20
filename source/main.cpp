@@ -16,6 +16,9 @@ int main() {
   
     // Parse the module
     sut::TokenStream stream(data, size);
+    if (stream.IsValid()) {
+      // Do something
+    }
 
     delete[] data;
     data = nullptr;
