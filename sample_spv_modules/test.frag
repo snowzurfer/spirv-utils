@@ -1,0 +1,29 @@
+#version 450
+
+in vec4 color1;
+in vec4 multiplier;
+noperspective in vec4 color2;
+out vec4 color;
+
+struct S {
+    bool b;
+    vec4 v[5];
+    int i;
+};
+
+uniform blockName {
+    S s;
+    bool cond;
+};
+
+void main() {
+    vec4 scale = vec4(1.0, 1.0, 2.0, 1.0);
+
+    if (cond)
+        color = color1 + s.v[2];
+    else
+        color = sqrt(color2) * scale;
+
+    for (int i = 0; i < 4; ++i)
+        color *= multiplier;
+}
