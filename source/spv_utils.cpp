@@ -1,7 +1,6 @@
 #include <spv_utils.h>
 #include <cassert>
 
-
 namespace sut {
 
 static const size_t kSpvIndexMagicNumber = 0;
@@ -11,8 +10,21 @@ static const size_t kSpvIndexBound = 3;
 static const size_t kSpvIndexSchema = 4;
 static const size_t kSpvIndexInstruction = 5;
 
-TokenStream::TokenStream(const void *module_stream, size_t binary_size) 
-    : words_count_(0),
+static void SplitSpvOpCode(uint32_t word, uint16_t *word_count,
+                           uint16_t *opcode) {
+  *word_count = static_cast<uint16_t>((0xFFFF0000 & word) >> 16U);
+  *opcode = static_cast<uint16_t>(0x0000FFFF & word);
+}
+
+static void SplitSpvOpCode(uint32_t word,
+                           uint16_t *opcode) {
+  *opcode = static_cast<uint16_t>(0x0000FFFF & word);
+}
+
+TokenStream::TokenStream(const void *module_stream,
+                         size_t binary_size) 
+    : module_stream_(nullptr),
+      words_count_(0),
       parse_result_(Result::SPV_ERROR_INTERNAL),
       ops_table_() {
   ParseModule(module_stream, binary_size);
@@ -32,17 +44,22 @@ bool TokenStream::IsValid() const {
 }
 
 void TokenStream::Reset() {
+  //module_stream_.reset();
+  module_stream_ = nullptr;
   words_count_ = 0;
   parse_result_ = Result::SPV_ERROR_INTERNAL;
   ops_table_.clear();
 }
   
-void TokenStream::ParseModule(const void *module_stream, size_t binary_size) {
+void TokenStream::ParseModule(const void *module_stream, 
+                              size_t binary_size) {
   parse_result_ = ParseModuleInternal(module_stream, binary_size);
 }
 
-Result TokenStream::ParseModuleInternal(const void *module_stream,
-                                        size_t binary_size) {
+Result TokenStream::ParseModuleInternal(
+    const void *module_stream, 
+    size_t binary_size) {
+  assert(module_stream);
   Reset();
 
   words_count_ = binary_size / 4;
@@ -50,7 +67,9 @@ Result TokenStream::ParseModuleInternal(const void *module_stream,
     return Result::SPV_ERROR_INTERNAL;
   }
 
-  const uint32_t * bin_stream = static_cast<const uint32_t *>(module_stream);
+  module_stream_ = static_cast<const uint32_t *>(module_stream);
+
+  //module_stream_.reset(bin_stream, std::default_delete<char[]>());
 
   // Set tokens for theader; these always take the same amount of words
   InsertTokenInTable(kSpvIndexMagicNumber);
@@ -65,7 +84,7 @@ Result TokenStream::ParseModuleInternal(const void *module_stream,
   // per instruction
   while (word_index < words_count_) {
     size_t inst_word_count = 0;
-    if (ParseToken(bin_stream, word_index, &inst_word_count)
+    if (ParseToken(module_stream_, word_index, &inst_word_count)
         != Result::SPV_SUCCESS) {
       return Result::SPV_ERROR_INTERNAL;
     }
@@ -78,13 +97,13 @@ Result TokenStream::ParseModuleInternal(const void *module_stream,
   }
 
   // Append end terminator to table
-  InsertTokenInTable(0);
+  InsertTokenInTable(words_count_);
 
   return Result::SPV_SUCCESS;
 }
   
 void TokenStream::InsertTokenInTable(size_t offset) {
-  ops_table_.push_back(OpEntry(offset, -1, -1, false));
+  ops_table_.push_back(OpEntry(offset, 0, 0, false));
 }
 
 Result TokenStream::ParseToken(const uint32_t *bin_stream, size_t start_index,
@@ -107,22 +126,89 @@ Result TokenStream::ParseToken(const uint32_t *bin_stream, size_t start_index,
   return Result::SPV_SUCCESS;
 }
 
-void TokenStream::FilterModule(TokenFilterCallbackFn callback_fn) {
-  if (!IsValid()) {
+void TokenStream::FilterModule(std::function<void(TokenIterator &)> callback) {
+  assert(module_stream_);
+  if ((!IsValid()) || (!callback)) {
     return;
+  }
+
+  // Callback per-token
+  for (OpsTable::iterator i = ops_table_.begin(); i != ops_table_.end(); i++) {
+    callback(TokenIterator(i, module_stream_,
+                              std::distance(ops_table_.begin(), i)));
   }
 }
 
 uint32_t TokenStream::PeekAt(const uint32_t *bin_stream, size_t index) {
   assert(index < words_count_);
-  assert(bin_stream != nullptr);
+  assert(bin_stream);
   return bin_stream[index];
 }
 
-void TokenStream::SplitSpvOpCode(uint32_t word, uint16_t *word_count,
-                                 uint16_t *opcode) {
-  *word_count = static_cast<uint16_t>((0xFFFF0000 & word) >> 16U);
-  *opcode = static_cast<uint16_t>(0x0000FFFF & word);
+std::vector<uint32_t> TokenStream::EmitFilteredModule() const {
+  assert(module_stream_);
+  std::vector<uint32_t> new_stream;
+
+  for (OpsTable::const_iterator i = ops_table_.begin();
+       i != (ops_table_.end() - 1);
+       i++) {
+    // If there are pending Insert Before operations, emit those ones first
+    if (std::get<1>(*i).size() > 0) {
+      new_stream.insert(new_stream.end(), std::get<1>(*i).begin(),
+                        std::get<1>(*i).end());
+    }
+    // If the original instruction is not to be removed, emit it
+    if (std::get<3>(*i) != true) {
+      new_stream.insert(
+          new_stream.end(),
+          module_stream_[std::get<0>(*(i))],
+          module_stream_[std::get<0>(*(i + 1))]);
+    }
+    // If there are pending Insert After operations, emit them at the end 
+    if (std::get<2>(*i).size() > 0) {
+      new_stream.insert(new_stream.end(), std::get<2>(*i).begin(),
+                        std::get<2>(*i).end());
+    }
+  }
+
+  return new_stream;
+}
+
+TokenIterator::TokenIterator(Iterator itor, const uint32_t *module_stream,
+                             size_t idx)
+  : itor_(itor),
+    module_stream_(module_stream),
+    idx_(idx) {
+  assert(module_stream_ != nullptr);
+}
+
+spv::Op TokenIterator::GetOpcode() const {
+  uint16_t inst_opcode = 0U;
+  uint32_t word = module_stream_[std::get<0>(*itor_)];
+
+  SplitSpvOpCode(word, &inst_opcode);
+
+  return static_cast<spv::Op>(inst_opcode);
+}
+  
+void TokenIterator::InsertBefore(const uint32_t *instructions,
+                                 size_t words_count) {
+  std::get<1>(*itor_).insert(std::get<1>(*itor_).end(), instructions,
+                             instructions + words_count);
+}
+
+void TokenIterator::InsertAfter(const uint32_t *instructions,
+                                 size_t words_count) {
+  std::get<2>(*itor_).insert(std::get<2>(*itor_).end(), instructions,
+                             instructions + words_count);
+}
+
+void TokenIterator::Remove() {
+  std::get<3>(*itor_) = true;
+}
+  
+size_t TokenIterator::GetTokenIndex() const {
+  return idx_;
 }
 
 } // namespace sut

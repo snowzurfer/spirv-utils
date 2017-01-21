@@ -50,8 +50,16 @@ message(STATUS "Compiler custom flags are: ${CMAKE_CXX_FLAGS}")
 message(STATUS "Compiler debug flags are: ${CMAKE_CXX_FLAGS_DEBUG}")
 message(STATUS "Compiler release flags are: ${CMAKE_CXX_FLAGS_RELEASE}")
 
+# Setup handy variables
+set(SPIRV-HEADERS_SOURCE_DIR 
+    "${CMAKE_CURRENT_SOURCE_DIR}/external/SPIRV-Headers")
+
+# Add external projects
+add_subdirectory(${SPIRV-HEADERS_SOURCE_DIR})
+
 # Set include directories
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${SPIRV-HEADERS_SOURCE_DIR}/include)
 
 # Set headers and sources
 set(SUT_HEADERS

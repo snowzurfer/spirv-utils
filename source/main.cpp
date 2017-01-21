@@ -1,6 +1,13 @@
 #include <iostream>
 #include <fstream>
 #include <spv_utils.h>
+#include <cstdint>
+
+static void Callback(sut::TokenIterator &itor) {
+  if (itor.GetOpcode() == spv::Op::OpCapability) {
+    std::cout << "Inside if statement, where itor.GetOpcode() == spv::Op::OpCapability\n";
+  }
+}
 
 int main() {
   // Read spv binary module from a file
@@ -13,11 +20,11 @@ int main() {
     char *data = new char[size];
     spv_file.read(data, size);
     spv_file.close();
-  
+
     // Parse the module
     sut::TokenStream stream(data, size);
     if (stream.IsValid()) {
-      // Do something
+      stream.FilterModule(&Callback);
     }
 
     delete[] data;
