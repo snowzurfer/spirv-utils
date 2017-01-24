@@ -3,12 +3,6 @@
 #include <spv_utils.h>
 #include <cstdint>
 
-static void Callback(sut::TokenIterator &itor) {
-  if (itor.GetOpcode() == spv::Op::OpCapability) {
-    std::cout << "Inside if statement, where itor.GetOpcode() == spv::Op::OpCapability\n";
-  }
-}
-
 int main() {
   // Read spv binary module from a file
   std::ifstream spv_file("../sample_spv_modules/test.frag.spv", std::ios::binary |
@@ -22,9 +16,17 @@ int main() {
     spv_file.close();
 
     // Parse the module
-    sut::TokenStream stream(data, size);
-    if (stream.IsValid()) {
-      stream.FilterModule(&Callback);
+    sut::OpcodeStream stream(data, size);
+    if (stream) {
+      for (auto &i : stream) {
+        if (i.GetOpcode() == spv::Op::OpCapability) {
+          uint32_t instruction = 0xDEADBEEF;
+          i.InsertAfter(&instruction, 1U);
+          i.Remove();
+        }
+      }
+
+      std::vector<uint32_t> filtered_stream = stream.EmitFilteredStream();
     }
 
     delete[] data;

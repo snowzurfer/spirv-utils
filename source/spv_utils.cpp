@@ -10,29 +10,85 @@ static const size_t kSpvIndexBound = 3;
 static const size_t kSpvIndexSchema = 4;
 static const size_t kSpvIndexInstruction = 5;
 
-static void SplitSpvOpCode(uint32_t word, uint16_t *word_count,
-                           uint16_t *opcode) {
-  *word_count = static_cast<uint16_t>((0xFFFF0000 & word) >> 16U);
-  *opcode = static_cast<uint16_t>(0x0000FFFF & word);
+struct OpcodeHeader {
+  uint16_t words_count;
+  uint16_t opcode;
+}; // struct OpCodeHeader
+
+static OpcodeHeader SplitSpvOpCode(uint32_t word) {
+  return{
+    static_cast<uint16_t>((0xFFFF0000 & word) >> 16U),
+    static_cast<uint16_t>(0x0000FFFF & word) };
 }
 
-static void SplitSpvOpCode(uint32_t word,
-                           uint16_t *opcode) {
-  *opcode = static_cast<uint16_t>(0x0000FFFF & word);
+static uint32_t MergeSpvOpCode(const OpcodeHeader &header) {
+  return (
+    (static_cast<uint32_t>(header.words_count) << 16U) |
+    (static_cast<uint32_t>(header.opcode)));
 }
 
-TokenStream::TokenStream(const void *module_stream,
-                         size_t binary_size) 
-    : module_stream_(nullptr),
-      words_count_(0),
+OpcodeStream::OpcodeStream() 
+    : module_stream_(),
       parse_result_(Result::SPV_ERROR_INTERNAL),
-      ops_table_() {
-  ParseModule(module_stream, binary_size);
+      offsets_table_() {}
+  
+OpcodeStream::OpcodeStream(const void *module_stream, size_t binary_size)
+    : module_stream_(),
+      parse_result_(Result::SPV_ERROR_INTERNAL),
+      offsets_table_() {
+  parse_result_ = ParseModule(module_stream, binary_size);
 }
 
-TokenStream::~TokenStream() {}
+Result OpcodeStream::ParseModuleInternal() {
+  const size_t words_count = module_stream_.size();
+  if (words_count < kSpvIndexInstruction) {
+    return Result::SPV_ERROR_INTERNAL;
+  }
 
-bool TokenStream::IsValid() const {
+  // Set tokens for theader; these always take the same amount of words
+  InsertOffsetInTable(kSpvIndexMagicNumber);
+  InsertOffsetInTable(kSpvIndexVersionNumber);
+  InsertOffsetInTable(kSpvIndexGeneratorNumber);
+  InsertOffsetInTable(kSpvIndexBound);
+  InsertOffsetInTable(kSpvIndexSchema);
+
+  size_t word_index = kSpvIndexInstruction;
+
+  // Once the loop is finished, the offsets table will contain one entry
+  // per instruction
+  while (word_index < words_count) {
+    size_t inst_word_count = 0;
+    if (ParseInstruction(word_index, &inst_word_count)
+        != Result::SPV_SUCCESS) {
+      return Result::SPV_ERROR_INTERNAL;
+    }
+
+    // Insert offset for the current instruction
+    InsertOffsetInTable(word_index);
+
+    // Advance the word index by the size of the instruction
+    word_index += inst_word_count;
+  }
+
+  // Append end terminator to table
+  InsertOffsetInTable(words_count);
+
+  // Append end terminator word to original words stream
+  InsertWordHeaderInOriginalStream({0U, static_cast<uint16_t>(spv::Op::OpNop)});
+
+  return Result::SPV_SUCCESS;
+}
+  
+void OpcodeStream::InsertWordHeaderInOriginalStream(const OpcodeHeader &header) {
+  module_stream_.push_back(
+      MergeSpvOpCode(header));
+}
+  
+void OpcodeStream::InsertOffsetInTable(size_t offset) {
+  offsets_table_.push_back(OpcodeOffset(offset, *this));
+}
+  
+bool OpcodeStream::IsValid() const {
   switch (parse_result_) {
     case Result::SPV_SUCCESS: {
       return true;
@@ -43,172 +99,118 @@ bool TokenStream::IsValid() const {
   }
 }
 
-void TokenStream::Reset() {
-  //module_stream_.reset();
-  module_stream_ = nullptr;
-  words_count_ = 0;
-  parse_result_ = Result::SPV_ERROR_INTERNAL;
-  ops_table_.clear();
-}
-  
-void TokenStream::ParseModule(const void *module_stream, 
-                              size_t binary_size) {
-  parse_result_ = ParseModuleInternal(module_stream, binary_size);
+OpcodeStream::operator bool() const {
+  return IsValid();
 }
 
-Result TokenStream::ParseModuleInternal(
-    const void *module_stream, 
-    size_t binary_size) {
-  assert(module_stream);
-  Reset();
-
-  words_count_ = binary_size / 4;
-  if (words_count_ < kSpvIndexInstruction) {
-    return Result::SPV_ERROR_INTERNAL;
-  }
-
-  module_stream_ = static_cast<const uint32_t *>(module_stream);
-
-  //module_stream_.reset(bin_stream, std::default_delete<char[]>());
-
-  // Set tokens for theader; these always take the same amount of words
-  InsertTokenInTable(kSpvIndexMagicNumber);
-  InsertTokenInTable(kSpvIndexVersionNumber);
-  InsertTokenInTable(kSpvIndexGeneratorNumber);
-  InsertTokenInTable(kSpvIndexBound);
-  InsertTokenInTable(kSpvIndexSchema);
-
-  size_t word_index = kSpvIndexInstruction;
-
-  // Once the loop is finished, the tokens table will contain one entry
-  // per instruction
-  while (word_index < words_count_) {
-    size_t inst_word_count = 0;
-    if (ParseToken(module_stream_, word_index, &inst_word_count)
-        != Result::SPV_SUCCESS) {
-      return Result::SPV_ERROR_INTERNAL;
-    }
-
-    // Insert offset for the current instruction
-    InsertTokenInTable(word_index);
-
-    // Advance the word index by the size of the instruction
-    word_index += inst_word_count;
-  }
-
-  // Append end terminator to table
-  InsertTokenInTable(words_count_);
-
-  return Result::SPV_SUCCESS;
-}
-  
-void TokenStream::InsertTokenInTable(size_t offset) {
-  ops_table_.push_back(OpEntry(offset, 0, 0, false));
-}
-
-Result TokenStream::ParseToken(const uint32_t *bin_stream, size_t start_index,
-                               size_t *words_count) {
+Result OpcodeStream::ParseInstruction(
+    size_t start_index,
+    size_t *words_count) {
   // Read the first word of the instruction, which
   // contains the word count
-  uint32_t first_word = PeekAt(bin_stream, start_index);
+  uint32_t first_word = PeekAt(start_index);
   
   // Decompose and read the word count
-  uint16_t inst_word_count = 0U;
-  uint16_t inst_opcode = 0U;
-  SplitSpvOpCode(first_word, &inst_word_count, &inst_opcode);
+  OpcodeHeader header = SplitSpvOpCode(first_word);
 
-  if (inst_word_count < 1U) {
+  if (header.words_count < 1U) {
     return Result::SPV_ERROR_INTERNAL;
   }
 
-  *words_count = static_cast<size_t>(inst_word_count);
+  *words_count = static_cast<size_t>(header.words_count);
 
   return Result::SPV_SUCCESS;
 }
+  
+void OpcodeStream::Reset() {
+  module_stream_.clear();
+  offsets_table_.clear();
+  parse_result_ = Result::SPV_ERROR_INTERNAL;
+}
+  
+Result OpcodeStream::ParseModule(const void *module_stream, size_t binary_size) {
+  assert(binary_size && module_stream);
 
-void TokenStream::FilterModule(std::function<void(TokenIterator &)> callback) {
-  assert(module_stream_);
-  if ((!IsValid()) || (!callback)) {
-    return;
-  }
+  // Make a copy of the data
+  const uint32_t *stream = static_cast<const uint32_t *>(module_stream);
+  module_stream_.assign(stream, stream + (binary_size / 4));
 
-  // Callback per-token
-  for (OpsTable::iterator i = ops_table_.begin(); i != ops_table_.end(); i++) {
-    callback(TokenIterator(i, module_stream_,
-                              std::distance(ops_table_.begin(), i)));
-  }
+  return ParseModuleInternal();
 }
 
-uint32_t TokenStream::PeekAt(const uint32_t *bin_stream, size_t index) {
-  assert(index < words_count_);
-  assert(bin_stream);
-  return bin_stream[index];
+uint32_t OpcodeStream::PeekAt(size_t index) {
+  return module_stream_[index];
 }
 
-std::vector<uint32_t> TokenStream::EmitFilteredModule() const {
-  assert(module_stream_);
+std::vector<uint32_t> OpcodeStream::EmitFilteredStream() const {
   std::vector<uint32_t> new_stream;
 
-  for (OpsTable::const_iterator i = ops_table_.begin();
-       i != (ops_table_.end() - 1);
-       i++) {
+  for (std::vector<OpcodeOffset>::const_iterator oi = offsets_table_.begin();
+       oi != (offsets_table_.end() - 1);
+       oi++) {
     // If there are pending Insert Before operations, emit those ones first
-    if (std::get<1>(*i).size() > 0) {
-      new_stream.insert(new_stream.end(), std::get<1>(*i).begin(),
-                        std::get<1>(*i).end());
+    if (!oi->words_before_.empty()) {
+      new_stream.insert(new_stream.end(), oi->words_before_.begin(),
+                        oi->words_before_.end());
     }
     // If the original instruction is not to be removed, emit it
-    if (std::get<3>(*i) != true) {
+    if (!oi->remove_) {
       new_stream.insert(
           new_stream.end(),
-          module_stream_[std::get<0>(*(i))],
-          module_stream_[std::get<0>(*(i + 1))]);
+          module_stream_.begin() + oi->offset_,
+          module_stream_.begin() + ((oi + 1)->offset_));
     }
     // If there are pending Insert After operations, emit them at the end 
-    if (std::get<2>(*i).size() > 0) {
-      new_stream.insert(new_stream.end(), std::get<2>(*i).begin(),
-                        std::get<2>(*i).end());
+    if (!oi->words_after_.empty()) {
+      new_stream.insert(new_stream.end(), oi->words_after_.begin(),
+                        oi->words_after_.end());
     }
   }
 
   return new_stream;
 }
-
-TokenIterator::TokenIterator(Iterator itor, const uint32_t *module_stream,
-                             size_t idx)
-  : itor_(itor),
-    module_stream_(module_stream),
-    idx_(idx) {
-  assert(module_stream_ != nullptr);
+  
+OpcodeStream::iterator OpcodeStream::begin() {
+  return offsets_table_.begin();
 }
 
-spv::Op TokenIterator::GetOpcode() const {
-  uint16_t inst_opcode = 0U;
-  uint32_t word = module_stream_[std::get<0>(*itor_)];
-
-  SplitSpvOpCode(word, &inst_opcode);
-
-  return static_cast<spv::Op>(inst_opcode);
+OpcodeStream::iterator OpcodeStream::end() {
+  return offsets_table_.end();
 }
   
-void TokenIterator::InsertBefore(const uint32_t *instructions,
-                                 size_t words_count) {
-  std::get<1>(*itor_).insert(std::get<1>(*itor_).end(), instructions,
-                             instructions + words_count);
-}
+OpcodeOffset::OpcodeOffset(size_t offset, const OpcodeStream &opcode_stream)
+  : offset_(offset),
+    words_before_(),
+    words_after_(),
+    remove_(false),
+    opcode_stream_(opcode_stream) {}
 
-void TokenIterator::InsertAfter(const uint32_t *instructions,
-                                 size_t words_count) {
-  std::get<2>(*itor_).insert(std::get<2>(*itor_).end(), instructions,
-                             instructions + words_count);
-}
+spv::Op OpcodeOffset::GetOpcode() const {
+  uint32_t header_word = opcode_stream_.module_stream()[offset_];
 
-void TokenIterator::Remove() {
-  std::get<3>(*itor_) = true;
+  return static_cast<spv::Op>(SplitSpvOpCode(header_word).opcode);
 }
   
-size_t TokenIterator::GetTokenIndex() const {
-  return idx_;
+void OpcodeOffset::InsertBefore(const uint32_t *instructions,
+                                  size_t words_count) {
+  assert(instructions && words_count);
+  words_before_.insert(
+      words_before_.begin(),
+      instructions,
+      instructions + words_count);
+}
+
+void OpcodeOffset::InsertAfter(const uint32_t *instructions,
+                                 size_t words_count) {
+  assert(instructions && words_count);
+  words_after_.insert(
+      words_after_.begin(),
+      instructions,
+      instructions + words_count);
+}
+
+void OpcodeOffset::Remove() {
+  remove_ = true;
 }
 
 } // namespace sut
