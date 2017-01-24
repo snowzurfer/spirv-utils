@@ -57,9 +57,6 @@ set(SPIRV-HEADERS_SOURCE_DIR
 # Add external projects
 add_subdirectory(${SPIRV-HEADERS_SOURCE_DIR})
 
-# Set include directories
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include
-  ${SPIRV-HEADERS_SOURCE_DIR}/include)
 
 # Set headers and sources
 set(SUT_HEADERS
@@ -72,6 +69,11 @@ set(SUT_SOURCES
 add_library(sut
   ${SUT_HEADERS}
   ${SUT_SOURCES})
+
+# Set include directories for targets
+target_include_directories(sut PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${SPIRV-HEADERS_SOURCE_DIR}/include)
 
 option(SUT_BUILD_SAMPLE "Build the sample application" OFF)
 
