@@ -144,6 +144,8 @@ uint32_t OpcodeStream::PeekAt(size_t index) {
 
 std::vector<uint32_t> OpcodeStream::EmitFilteredStream() const {
   std::vector<uint32_t> new_stream;
+  // The new stream will roughly be the same size as the original one
+  new_stream.reserve(module_stream_.size());
 
   for (std::vector<OpcodeOffset>::const_iterator oi = offsets_table_.begin();
        oi != (offsets_table_.end() - 1);
