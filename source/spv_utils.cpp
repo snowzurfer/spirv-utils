@@ -122,7 +122,6 @@ uint32_t OpcodeStream::PeekAt(size_t index) {
 }
 
 std::vector<uint32_t> OpcodeStream::EmitFilteredStream() const {
-  typedef std::vector<size_t> OpsOffsets;
   WordsStream new_stream;
   // The new stream will roughly be as large as the original one
   new_stream.reserve(module_stream_.size());
@@ -131,34 +130,7 @@ std::vector<uint32_t> OpcodeStream::EmitFilteredStream() const {
        oi != (offsets_table_.end() - 1);
        oi++) {
     if (oi->insert_before_count() > 0) {
-      new_stream.insert(
-          new_stream.end(),
-          module_stream_.begin() + oi->insert_before_offset(),
-          module_stream_.begin() + oi->insert_before_offset() +
-            oi->insert_before_count());
-      
-      // If there isn't a marker after the last word, it means that there
-      // are other parts to output which are appended in the stream of words
-      if (*(module_stream_.begin() + oi->insert_before_offset() +
-           oi->insert_before_count()) != kMarker) {
-        // Go through the makers until you get to the last one
-        const uint32_t *current_marker =
-          &module_stream_[oi->insert_before_offset() +
-           oi->insert_before_count()];
-
-        while (*current_marker != kMarker) {
-          uint32_t next_index = ((0xFFFF0000 & *current_marker) >> 16U);
-          uint32_t next_count = (0x0000FFFF & *current_marker);
-          
-          // Output
-          new_stream.insert(
-              new_stream.end(),
-              module_stream_.begin() + next_index,
-              module_stream_.begin() + next_index + next_count);
-          
-          current_marker = &module_stream_[next_index + next_count];
-        }
-      }
+      EmitByType(new_stream, oi->insert_before_offset(), oi->insert_before_count());
     }
     if (!oi->remove()) {
       new_stream.insert(
@@ -167,38 +139,42 @@ std::vector<uint32_t> OpcodeStream::EmitFilteredStream() const {
           module_stream_.begin() + (oi + 1)->offset());
     }
     if (oi->insert_after_count() > 0) {
-      new_stream.insert(
-          new_stream.end(),
-          module_stream_.begin() + oi->insert_after_offset(),
-          module_stream_.begin() + oi->insert_after_offset() +
-            oi->insert_after_count());
- 
-      // If there isn't a marker after the last word, it means that there
-      // are other parts to output which are appended in the stream of words
-      if (*(module_stream_.begin() + oi->insert_after_offset() +
-           oi->insert_after_count()) != kMarker) {
-        // Go through the makers until you get to the last one
-        const uint32_t *current_marker =
-          &module_stream_[oi->insert_after_offset() +
-           oi->insert_after_count()];
-
-        while (*current_marker != kMarker) {
-          uint32_t next_index = ((0xFFFF0000 & *current_marker) >> 16U);
-          uint32_t next_count = (0x0000FFFF & *current_marker);
-          
-          // Output
-          new_stream.insert(
-              new_stream.end(),
-              module_stream_.begin() + next_index,
-              module_stream_.begin() + next_index + next_count);
-          
-          current_marker = &module_stream_[next_index + next_count];
-        }
-      }
+      EmitByType(new_stream, oi->insert_after_offset(), oi->insert_after_count());
     }
   }
 
   return new_stream;
+}
+  
+void OpcodeStream::EmitByType(
+    WordsStream &new_stream,
+    size_t start_offset,
+    size_t count) const {
+  new_stream.insert(
+      new_stream.end(),
+      module_stream_.begin() + start_offset,
+      module_stream_.begin() + start_offset + count);
+
+  // If there isn't a marker after the last word, it means that there
+  // are other parts to output which are appended in the stream of words
+  if (*(module_stream_.begin() + start_offset + count) != kMarker) {
+    // Go through the makers until you get to the last one
+    const uint32_t *current_marker =
+      &module_stream_[start_offset + count];
+
+    while (*current_marker != kMarker) {
+      uint32_t next_index = ((0xFFFF0000 & *current_marker) >> 16U);
+      uint32_t next_count = (0x0000FFFF & *current_marker);
+      
+      // Output
+      new_stream.insert(
+          new_stream.end(),
+          module_stream_.begin() + next_index,
+          module_stream_.begin() + next_index + next_count);
+      
+      current_marker = &module_stream_[next_index + next_count];
+    }
+  }
 }
   
 OpcodeStream::iterator OpcodeStream::begin() {

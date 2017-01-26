@@ -99,6 +99,11 @@ class OpcodeStream final {
   // Return the word at a given index in the module stream
   uint32_t PeekAt(size_t index);
 
+  // Emit the words for a given type of operation; the different type
+  // depends only on where the words are read from, so passing the start offset
+  // and count is sufficient to distinguish
+  void EmitByType(WordsStream &new_stream, size_t start_offset, size_t count) const;
+
 }; // class OpcodeStream 
 
 } // namespace sut
