@@ -20,6 +20,14 @@ int main() {
     for (auto &i : stream) {
       if (i.GetOpcode() == spv::Op::OpCapability) {
         uint32_t instruction = 0xDEADBEEF;
+        std::vector<uint32_t> longer_instruction = {
+          0xFFFFEEEE,
+          0xFFFFDDDD,
+          0xFFFFFFFF,
+          0xDEADBEEF
+        };
+        uint32_t instruction2 = 0xDEADBEEF;
+        i.InsertBefore(longer_instruction.data(), longer_instruction.size());
         i.InsertAfter(&instruction, 1U);
         i.Remove();
       }
