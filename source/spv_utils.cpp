@@ -11,6 +11,7 @@ static const size_t kSpvIndexBound = 3;
 static const size_t kSpvIndexSchema = 4;
 static const size_t kSpvIndexInstruction = 5;
 static const size_t kPendingOpsInitialReserve = 5;
+static const uint32_t kMarker = 0xFFFFFFFF;
 
 struct OpcodeHeader {
   uint16_t words_count;
@@ -135,6 +136,29 @@ std::vector<uint32_t> OpcodeStream::EmitFilteredStream() const {
           module_stream_.begin() + oi->insert_before_offset(),
           module_stream_.begin() + oi->insert_before_offset() +
             oi->insert_before_count());
+      
+      // If there isn't a marker after the last word, it means that there
+      // are other parts to output which are appended in the stream of words
+      if (*(module_stream_.begin() + oi->insert_before_offset() +
+           oi->insert_before_count()) != kMarker) {
+        // Go through the makers until you get to the last one
+        const uint32_t *current_marker =
+          &module_stream_[oi->insert_before_offset() +
+           oi->insert_before_count()];
+
+        while (*current_marker != kMarker) {
+          uint32_t next_index = ((0xFFFF0000 & *current_marker) >> 16U);
+          uint32_t next_count = (0x0000FFFF & *current_marker);
+          
+          // Output
+          new_stream.insert(
+              new_stream.end(),
+              module_stream_.begin() + next_index,
+              module_stream_.begin() + next_index + next_count);
+          
+          current_marker = &module_stream_[next_index + next_count];
+        }
+      }
     }
     if (!oi->remove()) {
       new_stream.insert(
@@ -148,6 +172,29 @@ std::vector<uint32_t> OpcodeStream::EmitFilteredStream() const {
           module_stream_.begin() + oi->insert_after_offset(),
           module_stream_.begin() + oi->insert_after_offset() +
             oi->insert_after_count());
+ 
+      // If there isn't a marker after the last word, it means that there
+      // are other parts to output which are appended in the stream of words
+      if (*(module_stream_.begin() + oi->insert_after_offset() +
+           oi->insert_after_count()) != kMarker) {
+        // Go through the makers until you get to the last one
+        const uint32_t *current_marker =
+          &module_stream_[oi->insert_after_offset() +
+           oi->insert_after_count()];
+
+        while (*current_marker != kMarker) {
+          uint32_t next_index = ((0xFFFF0000 & *current_marker) >> 16U);
+          uint32_t next_count = (0x0000FFFF & *current_marker);
+          
+          // Output
+          new_stream.insert(
+              new_stream.end(),
+              module_stream_.begin() + next_index,
+              module_stream_.begin() + next_index + next_count);
+          
+          current_marker = &module_stream_[next_index + next_count];
+        }
+      }
     }
   }
 
@@ -185,9 +232,7 @@ OpcodeOffset::OpcodeOffset(size_t offset, std::vector<uint32_t> &words)
       insert_before_count_(0),
       insert_after_offset_(0),
       insert_after_count_(0),
-      remove_(false) {
-  assert(!words.empty());
-}
+      remove_(false) {}
 
 spv::Op OpcodeOffset::GetOpcode() const {
   uint32_t header_word = words_[offset_];
@@ -200,14 +245,27 @@ void OpcodeOffset::InsertBefore(const uint32_t *instructions,
   assert(instructions && words_count);
 
   size_t new_offset = words_.size();
-  
+
   words_.insert(
       words_.end(),
       instructions,
       instructions + words_count);
+  // Add the end marker
+  words_.push_back(kMarker);
 
-  insert_before_offset_ = new_offset;
-  insert_before_count_ = words_count;
+  // Only set this the first time; afterwards use markers
+  if (insert_before_count_ == 0) {
+    insert_before_offset_ = new_offset;
+    insert_before_count_ = words_count;
+  }
+  else {
+    uint32_t *latest_marker =
+      GetLatestMaker(insert_before_offset_, insert_before_count_);
+
+    // Write at the last marker
+    *latest_marker = ((0xFFFF0000 & (new_offset << 16U)) |
+                      (0x0000FFFF & words_count));
+  }
 }
 
 void OpcodeOffset::InsertAfter(const uint32_t *instructions,
@@ -216,13 +274,43 @@ void OpcodeOffset::InsertAfter(const uint32_t *instructions,
 
   size_t new_offset = words_.size();
 
+  // +1 is for the end marker
+  words_.reserve(new_offset + words_count + 1);
+
   words_.insert(
       words_.end(),
       instructions,
       instructions + words_count);
+  // Add the end marker
+  words_.push_back(kMarker);
 
-  insert_after_offset_ = new_offset;
-  insert_after_count_ = words_count;
+  // Only set this the first time; afterwards use markers
+  if (insert_after_count_ == 0) {
+    insert_after_offset_ = new_offset;
+    insert_after_count_ = words_count;
+  }
+  else {
+    uint32_t *latest_marker =
+      GetLatestMaker(insert_after_offset_, insert_after_count_);
+    
+    // Write at the last marker
+    *latest_marker = ((0xFFFF0000 & (new_offset << 16U)) |
+                       (0x0000FFFF & words_count));
+  }
+}
+  
+uint32_t *OpcodeOffset::GetLatestMaker(
+    size_t initial_offset,
+    size_t initial_count) const {
+    uint32_t *current_marker = &words_[initial_offset + initial_count];
+
+    while (*current_marker != kMarker) {
+      uint32_t next_index = ((0xFFFF0000 & *current_marker) >> 16U);
+      uint32_t next_count = (0x0000FFFF & *current_marker);
+      current_marker = &words_[next_index + next_count];
+    }
+
+    return current_marker;
 }
 
 void OpcodeOffset::Remove() {

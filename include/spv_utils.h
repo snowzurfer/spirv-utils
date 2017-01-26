@@ -52,6 +52,8 @@ class OpcodeOffset final {
   size_t insert_after_count_;
   bool remove_;
 
+  uint32_t *GetLatestMaker(size_t initial_offset, size_t initial_count) const;
+
   std::vector<uint32_t> &words_;
 
 }; // class Opcode

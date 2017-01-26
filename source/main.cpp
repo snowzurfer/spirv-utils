@@ -21,17 +21,26 @@ int main() {
       if (i.GetOpcode() == spv::Op::OpCapability) {
         uint32_t instruction = 0xDEADBEEF;
         std::vector<uint32_t> longer_instruction = {
-          0xFFFFEEEE,
-          0xFFFFDDDD,
-          0xFFFFFFFF,
+          0xDEADBEEF,
+          0xDEADBEEF,
+          0xDEADBEEF,
           0xDEADBEEF
         };
-        uint32_t instruction2 = 0xDEADBEEF;
+        std::vector<uint32_t> longer_instruction_2 = {
+          0x1EADBEEF,
+          0x1EADBEEF,
+          0x1EADBEEF,
+          0x1EADBEEF
+        };
         i.InsertBefore(longer_instruction.data(), longer_instruction.size());
         i.InsertAfter(&instruction, 1U);
+        i.InsertAfter(longer_instruction.data(), longer_instruction.size());
+        i.InsertAfter(longer_instruction.data(), longer_instruction.size());
+        i.InsertBefore(longer_instruction_2.data(), longer_instruction_2.size());
         i.Remove();
       }
     }
+
     std::vector<uint32_t> filtered_stream = stream.EmitFilteredStream();
 
     delete[] data;
