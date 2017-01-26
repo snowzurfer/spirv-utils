@@ -7,21 +7,42 @@
 #include <spirv/1.1/spirv.hpp11>
 #include <functional>
 #include <memory>
+#include <stdexcept>
 
 namespace sut {
-
-enum class Result : int8_t {
-  SPV_SUCCESS = 0,
-  SPV_ERROR_INTERNAL = -1,
-};
 
 class OpcodeIterator;
 class OpcodeStream;
 
-
-class OpcodeOffset {
+class InvalidParameter final : public std::runtime_error {
  public:
-  OpcodeOffset() = delete;
+  explicit InvalidParameter(const std::string &what_arg);
+}; // class InvalidParameter
+
+class InvalidStream final : public std::runtime_error {
+ public:
+  explicit InvalidStream(const std::string &what_arg);
+}; // class InvalidStream
+
+
+struct PendingOp final {
+  enum class OpType : uint8_t {
+    INSERT_BEFORE,
+    INSERT_AFTER,
+    REMOVE
+  }; // enum class OpType
+
+  size_t offset;
+  size_t words_count;
+  OpType op_type;
+
+}; // class PendingOp
+
+
+class OpcodeOffset final {
+ public:
+  OpcodeOffset(size_t offset, std::vector<uint32_t> &words,
+               std::vector<PendingOp> &ops);
 
   spv::Op GetOpcode() const;
 
@@ -29,75 +50,73 @@ class OpcodeOffset {
   void InsertAfter(const uint32_t *instructions, size_t words_count);
   void Remove();
 
- private:
-  OpcodeOffset(size_t offset, const OpcodeStream &opcode_stream);
-  friend class OpcodeStream;
+  size_t offset() const { return offset_; }
+  const std::vector<size_t> &ops_offsets() const { return ops_offsets_; }
 
+ private:
+  // Data relative to this instruction
   size_t offset_;
 
-  template <size_t num>
-  void Insert(const uint32_t *instructions, size_t words_count) {
-    WordsVector &words_before = std::get<num>(opcode_stream_.ops_table_[idx_]);
-    words_before.insert(words_before.end(), instructions,
-                        instructions + words_count);
-  }
+  // List of words to be used to otput the filtered stream
+  std::vector<uint32_t> &words_;
 
-  std::vector<uint32_t> words_before_;
-  std::vector<uint32_t> words_after_;
-  bool remove_;
-  const OpcodeStream &opcode_stream_;
+  // List of pending operations
+  std::vector<PendingOp> &ops_;
+
+  // Indices into the list of pending operations; they represent the operations
+  // relative to this opcode offset
+  std::vector<size_t> ops_offsets_;
+
+  void Insert(const uint32_t *instructions, size_t words_count,
+              PendingOp::OpType op_type);
 
 }; // class Opcode
 
 
-class OpcodeStream {
+class OpcodeStream final {
  public:
   typedef std::vector<OpcodeOffset>::iterator iterator;
+  typedef std::vector<OpcodeOffset>::const_iterator const_iterator;
 
  public:
-  OpcodeStream(const void *module_stream, size_t binary_size);
-  OpcodeStream();
-
-  //OpcodeStream(const OpcodeStream &rhs);
-  //OpcodeStream(OpcodeStream &&rhs);
-  //OpcodeStream &operator==(const OpcodeStream &rhs);
-  //OpcodeStream &operator==(OpcodeStream &&rhs);
-
-  // Parses a module, creating an internal table which is then used for
-  // filtering and emission of the filtered stream
-  Result ParseModule(const void *module_stream, size_t binary_size);
+  explicit OpcodeStream(const void *module_stream, size_t binary_size);
 
   iterator begin();
   iterator end();
+  const_iterator begin() const;
+  const_iterator cbegin() const;
+  const_iterator end() const;
+  const_iterator cend() const;
 
   // Apply pending operations and emit filtered stream
   std::vector<uint32_t> EmitFilteredStream() const;
 
-  // Check whether the object is in a valid state so that it can be used.
-  bool IsValid() const;
-  operator bool() const;
-
-  const std::vector<uint32_t> &module_stream() const { return module_stream_; }
-
  private:
-  // Stream of words representing the original module
-  std::vector<uint32_t> module_stream_;
-
-  // The two tables are of the same lenght
-  std::vector<OpcodeOffset> offsets_table_;
-
-  Result parse_result_;
+  typedef std::vector<uint32_t> WordsStream;
+  typedef std::vector<OpcodeOffset> OffsetsList;
+  typedef std::vector<PendingOp> OpsList;
+  
+  // Stream of words representing the module as it has been modified
+  WordsStream module_stream_;
+  // One entry per instruction, with entries coming only from the original
+  // module, i.e. without the filtering
+  OffsetsList offsets_table_;
+  // Operations to be applied when emitting the filtered version of the module
+  OpsList pending_ops_;
 
   void InsertOffsetInTable(size_t offset);
   void InsertWordHeaderInOriginalStream(const struct OpcodeHeader &header);
-  Result ParseModuleInternal();
-  Result ParseInstruction(
-      size_t start_index,
-      size_t *words_count);
-  uint32_t PeekAt(size_t index);
-  void Reset();
 
-}; // class TokenStream 
+  // Parse the module stream into an offset table; called by the ctor
+  void ParseModule();
+
+  // Return the word count of a given instruction starting at start_index
+  size_t ParseInstructionWordCount(size_t start_index);
+
+  // Return the word at a given index in the module stream
+  uint32_t PeekAt(size_t index);
+
+}; // class OpcodeStream 
 
 } // namespace sut
 

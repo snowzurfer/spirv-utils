@@ -17,17 +17,14 @@ int main() {
 
     // Parse the module
     sut::OpcodeStream stream(data, size);
-    if (stream) {
-      for (auto &i : stream) {
-        if (i.GetOpcode() == spv::Op::OpCapability) {
-          uint32_t instruction = 0xDEADBEEF;
-          i.InsertAfter(&instruction, 1U);
-          i.Remove();
-        }
+    for (auto &i : stream) {
+      if (i.GetOpcode() == spv::Op::OpCapability) {
+        uint32_t instruction = 0xDEADBEEF;
+        i.InsertAfter(&instruction, 1U);
+        i.Remove();
       }
-
-      std::vector<uint32_t> filtered_stream = stream.EmitFilteredStream();
     }
+    std::vector<uint32_t> filtered_stream = stream.EmitFilteredStream();
 
     delete[] data;
     data = nullptr;
