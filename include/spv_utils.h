@@ -24,25 +24,9 @@ class InvalidStream final : public std::runtime_error {
   explicit InvalidStream(const std::string &what_arg);
 }; // class InvalidStream
 
-
-struct PendingOp final {
-  enum class OpType : uint8_t {
-    INSERT_BEFORE,
-    INSERT_AFTER,
-    REMOVE
-  }; // enum class OpType
-
-  size_t offset;
-  size_t words_count;
-  OpType op_type;
-
-}; // class PendingOp
-
-
 class OpcodeOffset final {
  public:
-  OpcodeOffset(size_t offset, std::vector<uint32_t> &words,
-               std::vector<PendingOp> &ops);
+  OpcodeOffset(size_t offset, std::vector<uint32_t> &words);
 
   spv::Op GetOpcode() const;
 
@@ -51,24 +35,24 @@ class OpcodeOffset final {
   void Remove();
 
   size_t offset() const { return offset_; }
-  const std::vector<size_t> &ops_offsets() const { return ops_offsets_; }
+  bool remove() const { return remove_; }
+  size_t insert_before_offset() const { return insert_before_offset_; }
+  size_t insert_before_count() const { return insert_before_count_; }
+  size_t insert_after_offset() const { return insert_after_offset_; }
+  size_t insert_after_count() const { return insert_after_count_; }
 
  private:
   // Data relative to this instruction
   size_t offset_;
 
   // List of words to be used to otput the filtered stream
+  size_t insert_before_offset_;
+  size_t insert_before_count_;
+  size_t insert_after_offset_;
+  size_t insert_after_count_;
+  bool remove_;
+
   std::vector<uint32_t> &words_;
-
-  // List of pending operations
-  std::vector<PendingOp> &ops_;
-
-  // Indices into the list of pending operations; they represent the operations
-  // relative to this opcode offset
-  std::vector<size_t> ops_offsets_;
-
-  void Insert(const uint32_t *instructions, size_t words_count,
-              PendingOp::OpType op_type);
 
 }; // class Opcode
 
@@ -94,15 +78,12 @@ class OpcodeStream final {
  private:
   typedef std::vector<uint32_t> WordsStream;
   typedef std::vector<OpcodeOffset> OffsetsList;
-  typedef std::vector<PendingOp> OpsList;
   
   // Stream of words representing the module as it has been modified
   WordsStream module_stream_;
   // One entry per instruction, with entries coming only from the original
   // module, i.e. without the filtering
   OffsetsList offsets_table_;
-  // Operations to be applied when emitting the filtered version of the module
-  OpsList pending_ops_;
 
   void InsertOffsetInTable(size_t offset);
   void InsertWordHeaderInOriginalStream(const struct OpcodeHeader &header);
