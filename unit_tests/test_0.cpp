@@ -38,21 +38,22 @@ TEST_CASE("spv utils is tested with correct spir-v binary",
 
     sut::OpcodeStream stream(data, size);
 
+    uint32_t instruction = 0xDEADBEEF;
+    std::vector<uint32_t> longer_instruction = {
+      0xDEADBEEF,
+      0xDEADBEEF,
+      0xDEADBEEF,
+      0xDEADBEEF
+    };
+    std::vector<uint32_t> longer_instruction_2 = {
+      0x1EADBEEF,
+      0x1EADBEEF,
+      0x1EADBEEF,
+      0x1EADBEEF
+    };
+
     for (auto &i : stream) {
       if (i.GetOpcode() == spv::Op::OpCapability) {
-        uint32_t instruction = 0xDEADBEEF;
-        std::vector<uint32_t> longer_instruction = {
-          0xDEADBEEF,
-          0xDEADBEEF,
-          0xDEADBEEF,
-          0xDEADBEEF
-        };
-        std::vector<uint32_t> longer_instruction_2 = {
-          0x1EADBEEF,
-          0x1EADBEEF,
-          0x1EADBEEF,
-          0x1EADBEEF
-        };
         i.InsertBefore(longer_instruction.data(), longer_instruction.size());
         i.InsertAfter(&instruction, 1U);
         i.InsertAfter(longer_instruction.data(), longer_instruction.size());
@@ -61,5 +62,12 @@ TEST_CASE("spv utils is tested with correct spir-v binary",
         i.Remove();
       }
     }
+
+    std::vector<uint32_t> new_module = stream.EmitFilteredStream();
+  
+    // -1 is due to removing the instruction OpCapability which is 2 words long
+    // and adding one instruction one word long.
+    REQUIRE(new_module.size() == ((size / 4) + (longer_instruction.size() * 3) +
+            longer_instruction_2.size() - 1));
   }
 }
