@@ -110,7 +110,7 @@ in the `CMakeLists` of the `unit_tests` folder.
 
 ## Authors
 
-* **Alberto Taiuti** - *Initial work* - [@snowzurfer](https://github.com/snowzurfer)
+* **Alberto Taiuti** - *Developer* - [@snowzurfer](https://github.com/snowzurfer)
 
 ## License
 
