@@ -203,12 +203,12 @@ OpcodeStream::const_iterator OpcodeStream::cend() const {
   
 OpcodeOffset::OpcodeOffset(size_t offset, std::vector<uint32_t> &words)
     : offset_(offset),
-      words_(words),
       insert_before_offset_(0),
       insert_before_count_(0),
       insert_after_offset_(0),
       insert_after_count_(0),
-      remove_(false) {}
+      remove_(false),
+      words_(words) {}
 
 spv::Op OpcodeOffset::GetOpcode() const {
   uint32_t header_word = words_[offset_];
