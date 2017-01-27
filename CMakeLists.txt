@@ -51,12 +51,15 @@ message(STATUS "Compiler debug flags are: ${CMAKE_CXX_FLAGS_DEBUG}")
 message(STATUS "Compiler release flags are: ${CMAKE_CXX_FLAGS_RELEASE}")
 
 # Setup handy variables
+set(SUT_SOURCE_DIR
+    "${CMAKE_CURRENT_SOURCE_DIR}")
 set(SPIRV-HEADERS_SOURCE_DIR 
     "${CMAKE_CURRENT_SOURCE_DIR}/external/SPIRV-Headers")
+set(CATCH_SOURCE_DIR 
+    "${CMAKE_CURRENT_SOURCE_DIR}/external/catch")
 
 # Add external projects
 add_subdirectory(${SPIRV-HEADERS_SOURCE_DIR})
-
 
 # Set headers and sources
 set(SUT_HEADERS
@@ -72,25 +75,11 @@ add_library(sut
 
 # Set include directories for targets
 target_include_directories(sut PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${SUT_SOURCE_DIR}/include
   ${SPIRV-HEADERS_SOURCE_DIR}/include)
 
-option(SUT_BUILD_SAMPLE "Build the sample application" OFF)
+option(SUT_BUILD_TESTS "Build the tests" OFF)
 
-if(SUT_BUILD_SAMPLE)
-  set(SUT_SAMPLE_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/source/main.cpp)
-  
-  add_executable(sut_sample
-    ${SUT_SAMPLE_SOURCES})
-
-  target_link_libraries(sut_sample
-    sut)
-
-endif(SUT_BUILD_SAMPLE)
-
-  
-
-
-
-
+if(SUT_BUILD_TESTS)
+  add_subdirectory(unit_tests)
+endif(SUT_BUILD_TESTS)
