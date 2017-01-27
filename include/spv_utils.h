@@ -1,13 +1,13 @@
 #ifndef SPV_UTILS_H
 #define SPV_UTILS_H
 
-#include <vector>
 #include <cstdint>
-#include <tuple>
-#include <spirv/1.1/spirv.hpp11>
 #include <functional>
 #include <memory>
+#include <spirv/1.1/spirv.hpp11>
 #include <stdexcept>
+#include <tuple>
+#include <vector>
 
 namespace sut {
 
@@ -17,12 +17,12 @@ class OpcodeStream;
 class InvalidParameter final : public std::runtime_error {
  public:
   explicit InvalidParameter(const std::string &what_arg);
-}; // class InvalidParameter
+};  // class InvalidParameter
 
 class InvalidStream final : public std::runtime_error {
  public:
   explicit InvalidStream(const std::string &what_arg);
-}; // class InvalidStream
+};  // class InvalidStream
 
 class OpcodeOffset final {
  public:
@@ -56,8 +56,7 @@ class OpcodeOffset final {
 
   std::vector<uint32_t> &words_;
 
-}; // class Opcode
-
+};  // class Opcode
 
 class OpcodeStream final {
  public:
@@ -80,7 +79,7 @@ class OpcodeStream final {
  private:
   typedef std::vector<uint32_t> WordsStream;
   typedef std::vector<OpcodeOffset> OffsetsList;
-  
+
   // Stream of words representing the module as it has been modified
   WordsStream module_stream_;
   // One entry per instruction, with entries coming only from the original
@@ -102,10 +101,11 @@ class OpcodeStream final {
   // Emit the words for a given type of operation; the different type
   // depends only on where the words are read from, so passing the start offset
   // and count is sufficient to distinguish
-  void EmitByType(WordsStream &new_stream, size_t start_offset, size_t count) const;
+  void EmitByType(WordsStream &new_stream, size_t start_offset,
+                  size_t count) const;
 
-}; // class OpcodeStream 
+};  // class OpcodeStream
 
-} // namespace sut
+}  // namespace sut
 
 #endif
