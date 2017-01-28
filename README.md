@@ -31,9 +31,9 @@ int main() {
     for (auto &i : stream) {
       if (i.GetOpcode() == spv::Op::OpCapability) {
         uint32_t instruction = 0xDEADBEEF;
-        std::array<uint32_t> longer_instruction = {0xDEADBEEF, 0xDEADBEEF,
+        std::array<uint32_t, 4> longer_instruction = {0xDEADBEEF, 0xDEADBEEF,
                                                     0xDEADBEEF, 0xDEADBEEF};
-        std::array<uint32_t> longer_instruction_2 = {0x1EADBEEF, 0x1EADBEEF,
+        std::array<uint32_t, 4> longer_instruction_2 = {0x1EADBEEF, 0x1EADBEEF,
                                                       0x1EADBEEF, 0x1EADBEEF};
         i.InsertBefore(longer_instruction.data(), longer_instruction.size());
         i.InsertAfter(&instruction, 1U);
