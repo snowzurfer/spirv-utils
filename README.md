@@ -56,7 +56,7 @@ int main() {
 ```
 
 ### Prerequisites
-* CMake
+* CMake 2.8
 
 ### Installing
 #### CMake usage
@@ -106,18 +106,19 @@ Now, every time you build, the tests will be run on the unit tests defined
 in the `CMakeLists` of the `unit_tests` folder.
 
 ## Built with
-
 * [Catch](http://github.com/philsquared/Catch) - The unit testing framework used
 * [SPIRV-Headers](http://github.com/KhronosGroup/SPIRV-Headers/)
+* [CMake](http://cmake.org)
+
+## Tested platforms and compilers
+* ArchLinux, kernel 4.9.6-1 x86_64, g++ 6.3.1 20170109
+* Windows 10 x86_64, Visual Studio 2015, Toolset v140
 
 ## Authors
-
 * **Alberto Taiuti** - *Developer* - [@snowzurfer](https://github.com/snowzurfer)
 
 ## License
-
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
 
 ## Acknowledgments
-
 * **Dr Matthäus G. Chajdas** - *Mentoring and design* - [@Anteru](https://github.com/Anteru)
