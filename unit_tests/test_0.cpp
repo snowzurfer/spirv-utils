@@ -3,11 +3,15 @@
 #include <cstdint>
 #include <fstream>
 #include <iostream>
+#include <array>
+
+#define STR_EXPAND(str) #str
+#define STR(str) STR_EXPAND(str)
 
 TEST_CASE("spv utils is tested with correct spir-v binary",
           "[spv-utils-correct-spvbin]") {
   // Read spv binary module from a file
-  std::ifstream spv_file("./sample_spv_modules/test.frag.spv",
+  std::ifstream spv_file(STR(SPV_ASSETS_FOLDER) "/test.frag.spv",
                          std::ios::binary | std::ios::ate | std::ios::in);
   REQUIRE(spv_file.is_open() == true);
   std::streampos size = spv_file.tellg();
@@ -33,9 +37,9 @@ TEST_CASE("spv utils is tested with correct spir-v binary",
     sut::OpcodeStream stream(data, size);
 
     uint32_t instruction = 0xDEADBEEF;
-    std::vector<uint32_t> longer_instruction = {0xDEADBEEF, 0xDEADBEEF,
+    std::array<uint32_t, 4U> longer_instruction = {0xDEADBEEF, 0xDEADBEEF,
                                                 0xDEADBEEF, 0xDEADBEEF};
-    std::vector<uint32_t> longer_instruction_2 = {0x1EADBEEF, 0x1EADBEEF,
+    std::array<uint32_t, 4U> longer_instruction_2 = {0x1EADBEEF, 0x1EADBEEF,
                                                   0x1EADBEEF, 0x1EADBEEF};
 
     for (auto &i : stream) {

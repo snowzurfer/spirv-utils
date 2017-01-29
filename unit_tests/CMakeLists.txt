@@ -1,7 +1,7 @@
 enable_testing()
 
-# Set headers and sources
 
+# Set headers and sources
 set(CATCH_MAIN_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/catch_main.cpp)
 
 #
@@ -21,9 +21,13 @@ function(add_catch_test TARGET)
     COMMENT "Running ${TARGET}" VERBATIM)
 endfunction()
 
+set(SPV_ASSETS_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/sample_spv_modules)
+
 add_catch_test(test_0 test_0.cpp)
 target_include_directories(test_0 PUBLIC
   ${SUT_SOURCE_DIR}/include
   ${SPIRV-HEADERS_SOURCE_DIR}/include)
 target_link_libraries(test_0
   sut)
+target_compile_definitions(test_0
+  PUBLIC SPV_ASSETS_FOLDER=${SPV_ASSETS_FOLDER})
