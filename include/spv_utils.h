@@ -84,7 +84,7 @@ class OpcodeStream final {
   OpcodeStream EmitFilteredStream() const;
 
   // Get the raw words stream, unfiltered
-  const std::vector<uint32_t> &GetWordsStream() const { return module_stream_; }
+  std::vector<uint32_t> GetWordsStream() const;
 
  private:
   typedef std::vector<uint32_t> WordsStream;
@@ -92,6 +92,9 @@ class OpcodeStream final {
 
   // Stream of words representing the module as it has been modified
   WordsStream module_stream_;
+
+  size_t original_module_size_;
+
   // One entry per instruction, with entries coming only from the original
   // module, i.e. without the filtering
   OffsetsList offsets_table_;

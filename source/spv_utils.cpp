@@ -35,7 +35,7 @@ InvalidStream::InvalidStream(const std::string &what_arg)
     : runtime_error(what_arg) {}
 
 OpcodeStream::OpcodeStream(const void *module_stream, size_t binary_size)
-    : module_stream_(), offsets_table_() {
+    : module_stream_(), offsets_table_(), original_module_size_(0) {
   if (!module_stream || !binary_size || ((binary_size % 4) != 0) ||
       ((binary_size / 4) < kSpvIndexInstruction)) {
     throw InvalidParameter("Invalid parameter in ctor of OpcodeStream!");
@@ -46,6 +46,7 @@ OpcodeStream::OpcodeStream(const void *module_stream, size_t binary_size)
   module_stream_.insert(
       module_stream_.begin(), static_cast<const uint32_t *>(module_stream),
       static_cast<const uint32_t *>(module_stream) + (binary_size / 4));
+  original_module_size_ = module_stream_.size();
 
   // Reserve enough memory for the worst case scenario, where each instruction
   // is one word long
@@ -56,7 +57,7 @@ OpcodeStream::OpcodeStream(const void *module_stream, size_t binary_size)
 }
 
 OpcodeStream::OpcodeStream(const std::vector<uint32_t> &module_stream)
-    : module_stream_(), offsets_table_() {
+    : module_stream_(), offsets_table_(), original_module_size_(0) {
   if (module_stream.size() < kSpvIndexInstruction) {
     throw InvalidParameter(
         "Invalid number of words in the module passed to ctor of "
@@ -66,6 +67,7 @@ OpcodeStream::OpcodeStream(const std::vector<uint32_t> &module_stream)
   module_stream_.reserve(module_stream.size());
   module_stream_.insert(module_stream_.begin(), module_stream.begin(),
                         module_stream.end());
+  original_module_size_ = module_stream_.size();
 
   // Reserve enough memory for the worst case scenario, where each instruction
   // is one word long
@@ -76,12 +78,16 @@ OpcodeStream::OpcodeStream(const std::vector<uint32_t> &module_stream)
 }
 
 OpcodeStream::OpcodeStream(std::vector<uint32_t> &&module_stream)
-    : module_stream_(std::move(module_stream)), offsets_table_() {
+    : module_stream_(std::move(module_stream)),
+      offsets_table_(),
+      original_module_size_(0) {
   if (module_stream_.size() < kSpvIndexInstruction) {
     throw InvalidParameter(
         "Invalid number of words in the module passed to ctor of "
         "OpcodeStream!");
   }
+
+  original_module_size_ = module_stream_.size();
 
   // Reserve enough memory for the worst case scenario, where each instruction
   // is one word long
@@ -172,6 +178,11 @@ OpcodeStream OpcodeStream::EmitFilteredStream() const {
   }
 
   return OpcodeStream(std::move(new_stream));
+}
+
+std::vector<uint32_t> OpcodeStream::GetWordsStream() const {
+  return std::vector<uint32_t>(module_stream_.begin(),
+                               module_stream_.begin() + original_module_size_);
 }
 
 void OpcodeStream::EmitByType(WordsStream &new_stream, size_t start_offset,

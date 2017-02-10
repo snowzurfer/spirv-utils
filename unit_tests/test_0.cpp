@@ -1,9 +1,9 @@
 #include <spv_utils.h>
+#include <array>
 #include <catch.hpp>
 #include <cstdint>
 #include <fstream>
 #include <iostream>
-#include <array>
 
 #define STR_EXPAND(str) #str
 #define STR(str) STR_EXPAND(str)
@@ -38,9 +38,9 @@ TEST_CASE("spv utils is tested with correct spir-v binary",
 
     uint32_t instruction = 0xDEADBEEF;
     std::array<uint32_t, 4U> longer_instruction = {0xDEADBEEF, 0xDEADBEEF,
-                                                0xDEADBEEF, 0xDEADBEEF};
+                                                   0xDEADBEEF, 0xDEADBEEF};
     std::array<uint32_t, 4U> longer_instruction_2 = {0x1EADBEEF, 0x1EADBEEF,
-                                                  0x1EADBEEF, 0x1EADBEEF};
+                                                     0x1EADBEEF, 0x1EADBEEF};
 
     for (auto &i : stream) {
       if (i.GetOpcode() == spv::Op::OpCapability) {
