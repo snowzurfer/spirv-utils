@@ -125,7 +125,7 @@ void OpcodeStream::InsertWordHeaderInOriginalStream(
 }
 
 void OpcodeStream::InsertOffsetInTable(size_t offset) {
-  offsets_table_.push_back(OpcodeOffset(offset, module_stream_));
+  offsets_table_.push_back(OpcodeIterator(offset, module_stream_));
 }
 
 size_t OpcodeStream::ParseInstructionWordCount(size_t start_index) {
@@ -230,7 +230,7 @@ OpcodeStream::const_iterator OpcodeStream::cend() const {
 
 size_t OpcodeStream::size() const { return offsets_table_.size(); }
 
-OpcodeOffset::OpcodeOffset(size_t offset, std::vector<uint32_t> &words)
+OpcodeIterator::OpcodeIterator(size_t offset, std::vector<uint32_t> &words)
     : offset_(offset),
       insert_before_offset_(0),
       insert_before_count_(0),
@@ -241,14 +241,14 @@ OpcodeOffset::OpcodeOffset(size_t offset, std::vector<uint32_t> &words)
       remove_(false),
       words_(words) {}
 
-spv::Op OpcodeOffset::GetOpcode() const {
+spv::Op OpcodeIterator::GetOpcode() const {
   uint32_t header_word = words_[offset_];
 
   return static_cast<spv::Op>(SplitSpvOpCode(header_word).opcode);
 }
 
-void OpcodeOffset::InsertBefore(const uint32_t *instructions,
-                                size_t words_count) {
+void OpcodeIterator::InsertBefore(const uint32_t *instructions,
+                                  size_t words_count) {
   assert(instructions && words_count);
 
   // Offset before new words are inserted
@@ -275,8 +275,8 @@ void OpcodeOffset::InsertBefore(const uint32_t *instructions,
   insert_before_count_ = words_count;
 }
 
-void OpcodeOffset::InsertAfter(const uint32_t *instructions,
-                               size_t words_count) {
+void OpcodeIterator::InsertAfter(const uint32_t *instructions,
+                                 size_t words_count) {
   assert(instructions && words_count);
 
   // Offset before new words are inserted
@@ -303,8 +303,8 @@ void OpcodeOffset::InsertAfter(const uint32_t *instructions,
   insert_after_count_ = words_count;
 }
 
-uint32_t *OpcodeOffset::GetLatestMaker(size_t initial_offset,
-                                       size_t initial_count) const {
+uint32_t *OpcodeIterator::GetLatestMaker(size_t initial_offset,
+                                         size_t initial_count) const {
   uint32_t *current_marker = &words_[initial_offset + initial_count];
 
   while (*current_marker != kMarker) {
@@ -316,9 +316,9 @@ uint32_t *OpcodeOffset::GetLatestMaker(size_t initial_offset,
   return current_marker;
 }
 
-void OpcodeOffset::Remove() { remove_ = true; }
+void OpcodeIterator::Remove() { remove_ = true; }
 
-void OpcodeOffset::Replace(const uint32_t *instructions, size_t words_count) {
+void OpcodeIterator::Replace(const uint32_t *instructions, size_t words_count) {
   assert(instructions && words_count);
 
   // Since we are replacing, remove the old instruction

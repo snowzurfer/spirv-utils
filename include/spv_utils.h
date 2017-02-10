@@ -19,7 +19,6 @@ struct OpcodeHeader final {
 OpcodeHeader SplitSpvOpCode(uint32_t word);
 uint32_t MergeSpvOpCode(const OpcodeHeader &header);
 
-
 class OpcodeIterator;
 class OpcodeStream;
 
@@ -33,9 +32,9 @@ class InvalidStream final : public std::runtime_error {
   explicit InvalidStream(const std::string &what_arg);
 };  // class InvalidStream
 
-class OpcodeOffset final {
+class OpcodeIterator final {
  public:
-  explicit OpcodeOffset(size_t offset, std::vector<uint32_t> &words);
+  explicit OpcodeIterator(size_t offset, std::vector<uint32_t> &words);
 
   // Get the opcode from the first word of the instruction
   spv::Op GetOpcode() const;
@@ -77,8 +76,8 @@ class OpcodeOffset final {
 
 class OpcodeStream final {
  public:
-  typedef std::vector<OpcodeOffset>::iterator iterator;
-  typedef std::vector<OpcodeOffset>::const_iterator const_iterator;
+  typedef std::vector<OpcodeIterator>::iterator iterator;
+  typedef std::vector<OpcodeIterator>::const_iterator const_iterator;
 
  public:
   explicit OpcodeStream(const void *module_stream, size_t binary_size);
@@ -102,7 +101,7 @@ class OpcodeStream final {
 
  private:
   typedef std::vector<uint32_t> WordsStream;
-  typedef std::vector<OpcodeOffset> OffsetsList;
+  typedef std::vector<OpcodeIterator> OffsetsList;
 
   // Stream of words representing the module as it has been modified
   WordsStream module_stream_;
