@@ -54,7 +54,8 @@ TEST_CASE("spv utils is tested with correct spir-v binary",
       }
     }
 
-    std::vector<uint32_t> new_module = stream.EmitFilteredStream();
+    sut::OpcodeStream new_stream = stream.EmitFilteredStream();
+    std::vector<uint32_t> new_module = new_stream.GetWordsStream();
 
     // -1 is due to removing the instruction OpCapability which is 2 words long
     // and adding one instruction one word long.

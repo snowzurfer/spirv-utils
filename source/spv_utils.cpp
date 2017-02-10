@@ -42,18 +42,50 @@ OpcodeStream::OpcodeStream(const void *module_stream, size_t binary_size)
   }
 
   // The +1 is because we will append a null-terminator to the stream
-  module_stream_.reserve((binary_size / 4) + 1);
+  module_stream_.reserve((binary_size / 4));
   module_stream_.insert(
       module_stream_.begin(), static_cast<const uint32_t *>(module_stream),
       static_cast<const uint32_t *>(module_stream) + (binary_size / 4));
 
   // Reserve enough memory for the worst case scenario, where each instruction
   // is one word long
-  offsets_table_.reserve(module_stream_.size());
+  // The +1 is because we will append a null-terminator to the stream
+  offsets_table_.reserve(module_stream_.size() + 1);
+
+  ParseModule();
+}
+  
+OpcodeStream::OpcodeStream(const std::vector<uint32_t> &module_stream)
+    : module_stream_(), offsets_table_() {
+  if (module_stream.size() < kSpvIndexInstruction) {
+    throw InvalidParameter("Invalid number of words in the module passed to ctor of OpcodeStream!");
+  }
+
+  module_stream_.reserve(module_stream.size());
+  module_stream_.insert(
+      module_stream_.begin(), module_stream.begin(), module_stream.end());
+
+  // Reserve enough memory for the worst case scenario, where each instruction
+  // is one word long
+  // The +1 is because we will append a null-terminator to the stream
+  offsets_table_.reserve(module_stream_.size() + 1);
 
   ParseModule();
 }
 
+OpcodeStream::OpcodeStream(std::vector<uint32_t> &&module_stream)
+  : module_stream_(std::move(module_stream)), offsets_table_() {
+  if (module_stream_.size() < kSpvIndexInstruction) {
+    throw InvalidParameter("Invalid number of words in the module passed to ctor of OpcodeStream!");
+  }
+
+  // Reserve enough memory for the worst case scenario, where each instruction
+  // is one word long
+  // The +1 is because we will append a null-terminator to the stream
+  offsets_table_.reserve(module_stream_.size() + 1);
+
+  ParseModule();
+}
 void OpcodeStream::ParseModule() {
   const size_t words_count = module_stream_.size();
 
@@ -80,9 +112,6 @@ void OpcodeStream::ParseModule() {
 
   // Append end terminator to table
   InsertOffsetInTable(words_count);
-
-  // Append end terminator word to original words stream
-  InsertWordHeaderInOriginalStream({0U, static_cast<uint16_t>(spv::Op::OpNop)});
 }
 
 void OpcodeStream::InsertWordHeaderInOriginalStream(
@@ -113,9 +142,9 @@ size_t OpcodeStream::ParseInstructionWordCount(size_t start_index) {
   return static_cast<size_t>(header.words_count);
 }
 
-uint32_t OpcodeStream::PeekAt(size_t index) { return module_stream_[index]; }
+uint32_t OpcodeStream::PeekAt(size_t index) const { return module_stream_[index]; }
 
-std::vector<uint32_t> OpcodeStream::EmitFilteredStream() const {
+OpcodeStream OpcodeStream::EmitFilteredStream() const {
   WordsStream new_stream;
   // The new stream will roughly be as large as the original one
   new_stream.reserve(module_stream_.size());
@@ -126,7 +155,7 @@ std::vector<uint32_t> OpcodeStream::EmitFilteredStream() const {
       EmitByType(new_stream, oi->insert_before_offset(),
                  oi->insert_before_count());
     }
-    if (!oi->remove()) {
+    if (!oi->is_removed()) {
       new_stream.insert(new_stream.end(), module_stream_.begin() + oi->offset(),
                         module_stream_.begin() + (oi + 1)->offset());
     }
@@ -136,7 +165,7 @@ std::vector<uint32_t> OpcodeStream::EmitFilteredStream() const {
     }
   }
 
-  return new_stream;
+  return OpcodeStream(std::move(new_stream));
 }
 
 void OpcodeStream::EmitByType(WordsStream &new_stream, size_t start_offset,
@@ -181,6 +210,10 @@ OpcodeStream::const_iterator OpcodeStream::cbegin() const {
 
 OpcodeStream::const_iterator OpcodeStream::cend() const {
   return offsets_table_.cend();
+}
+  
+size_t OpcodeStream::size() const {
+  return offsets_table_.size();
 }
 
 OpcodeOffset::OpcodeOffset(size_t offset, std::vector<uint32_t> &words)

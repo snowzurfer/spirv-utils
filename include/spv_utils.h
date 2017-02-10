@@ -28,20 +28,24 @@ class OpcodeOffset final {
  public:
   OpcodeOffset(size_t offset, std::vector<uint32_t> &words);
 
+  // Get the opcode from the first word of the instruction
   spv::Op GetOpcode() const;
 
   void InsertBefore(const uint32_t *instructions, size_t words_count);
   void InsertAfter(const uint32_t *instructions, size_t words_count);
   void Remove();
 
+
+ private:
   size_t offset() const { return offset_; }
-  bool remove() const { return remove_; }
+  bool is_removed() const { return remove_; }
   size_t insert_before_offset() const { return insert_before_offset_; }
   size_t insert_before_count() const { return insert_before_count_; }
   size_t insert_after_offset() const { return insert_after_offset_; }
   size_t insert_after_count() const { return insert_after_count_; }
 
- private:
+  friend class OpcodeStream;
+
   // Data relative to this instruction
   size_t offset_;
 
@@ -65,6 +69,8 @@ class OpcodeStream final {
 
  public:
   explicit OpcodeStream(const void *module_stream, size_t binary_size);
+  explicit OpcodeStream(const std::vector<uint32_t> &module_stream);
+  explicit OpcodeStream(std::vector<uint32_t> &&module_stream);
 
   iterator begin();
   iterator end();
@@ -72,9 +78,16 @@ class OpcodeStream final {
   const_iterator cbegin() const;
   const_iterator end() const;
   const_iterator cend() const;
+  // Number of instructions in the stream
+  size_t size() const;
 
   // Apply pending operations and emit filtered stream
-  std::vector<uint32_t> EmitFilteredStream() const;
+  OpcodeStream EmitFilteredStream() const;
+
+  // Get the raw words stream, unfiltered
+  const std::vector<uint32_t> &GetWordsStream() const {
+    return module_stream_;
+  }
 
  private:
   typedef std::vector<uint32_t> WordsStream;
@@ -96,7 +109,7 @@ class OpcodeStream final {
   size_t ParseInstructionWordCount(size_t start_index);
 
   // Return the word at a given index in the module stream
-  uint32_t PeekAt(size_t index);
+  uint32_t PeekAt(size_t index) const;
 
   // Emit the words for a given type of operation; the different type
   // depends only on where the words are read from, so passing the start offset
