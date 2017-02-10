@@ -26,7 +26,7 @@ class InvalidStream final : public std::runtime_error {
 
 class OpcodeOffset final {
  public:
-  OpcodeOffset(size_t offset, std::vector<uint32_t> &words);
+  explicit OpcodeOffset(size_t offset, std::vector<uint32_t> &words);
 
   // Get the opcode from the first word of the instruction
   spv::Op GetOpcode() const;
@@ -34,6 +34,7 @@ class OpcodeOffset final {
   void InsertBefore(const uint32_t *instructions, size_t words_count);
   void InsertAfter(const uint32_t *instructions, size_t words_count);
   void Remove();
+  void Replace(const uint32_t *instructions, size_t words_count);
 
  private:
   size_t offset() const { return offset_; }
@@ -42,6 +43,8 @@ class OpcodeOffset final {
   size_t insert_before_count() const { return insert_before_count_; }
   size_t insert_after_offset() const { return insert_after_offset_; }
   size_t insert_after_count() const { return insert_after_count_; }
+  size_t replace_offset() const { return replace_offset_; }
+  size_t replace_count() const { return replace_count_; }
 
   friend class OpcodeStream;
 
@@ -53,6 +56,8 @@ class OpcodeOffset final {
   size_t insert_before_count_;
   size_t insert_after_offset_;
   size_t insert_after_count_;
+  size_t replace_offset_;
+  size_t replace_count_;
   bool remove_;
 
   uint32_t *GetLatestMaker(size_t initial_offset, size_t initial_count) const;

@@ -167,10 +167,14 @@ OpcodeStream OpcodeStream::EmitFilteredStream() const {
       EmitByType(new_stream, oi->insert_before_offset(),
                  oi->insert_before_count());
     }
+
     if (!oi->is_removed()) {
       new_stream.insert(new_stream.end(), module_stream_.begin() + oi->offset(),
                         module_stream_.begin() + (oi + 1)->offset());
+    } else if (oi->replace_count() > 0) {
+      EmitByType(new_stream, oi->replace_offset(), oi->replace_count());
     }
+
     if (oi->insert_after_count() > 0) {
       EmitByType(new_stream, oi->insert_after_offset(),
                  oi->insert_after_count());
@@ -237,6 +241,8 @@ OpcodeOffset::OpcodeOffset(size_t offset, std::vector<uint32_t> &words)
       insert_before_count_(0),
       insert_after_offset_(0),
       insert_after_count_(0),
+      replace_offset_(0),
+      replace_count_(0),
       remove_(false),
       words_(words) {}
 
@@ -316,5 +322,25 @@ uint32_t *OpcodeOffset::GetLatestMaker(size_t initial_offset,
 }
 
 void OpcodeOffset::Remove() { remove_ = true; }
+
+void OpcodeOffset::Replace(const uint32_t *instructions, size_t words_count) {
+  assert(instructions && words_count);
+
+  // Since we are replacing, remove the old instruction
+  Remove();
+
+  // Offset before new words are inserted
+  size_t previous_offset = words_.size();
+
+  // +1 is for the end marker
+  words_.reserve(previous_offset + words_count + 1);
+  words_.insert(words_.end(), instructions, instructions + words_count);
+
+  // Add the end marker
+  words_.push_back(kMarker);
+
+  replace_offset_ = previous_offset;
+  replace_count_ = words_count;
+}
 
 }  // namespace sut

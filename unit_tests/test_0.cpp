@@ -41,25 +41,46 @@ TEST_CASE("spv utils is tested with correct spir-v binary",
                                                    0xDEADBEEF, 0xDEADBEEF};
     std::array<uint32_t, 4U> longer_instruction_2 = {0x1EADBEEF, 0x1EADBEEF,
                                                      0x1EADBEEF, 0x1EADBEEF};
-
-    for (auto &i : stream) {
-      if (i.GetOpcode() == spv::Op::OpCapability) {
-        i.InsertBefore(longer_instruction.data(), longer_instruction.size());
-        i.InsertAfter(&instruction, 1U);
-        i.InsertAfter(longer_instruction.data(), longer_instruction.size());
-        i.InsertAfter(longer_instruction.data(), longer_instruction.size());
-        i.InsertBefore(longer_instruction_2.data(),
-                       longer_instruction_2.size());
-        i.Remove();
+    SECTION(
+        "Inserting before, after and removing produces an output of the right "
+        "size") {
+      for (auto &i : stream) {
+        if (i.GetOpcode() == spv::Op::OpCapability) {
+          i.InsertBefore(longer_instruction.data(), longer_instruction.size());
+          i.InsertAfter(&instruction, 1U);
+          i.InsertAfter(longer_instruction.data(), longer_instruction.size());
+          i.InsertAfter(longer_instruction.data(), longer_instruction.size());
+          i.InsertBefore(longer_instruction_2.data(),
+                         longer_instruction_2.size());
+          i.Remove();
+        }
       }
+
+      sut::OpcodeStream new_stream = stream.EmitFilteredStream();
+      std::vector<uint32_t> new_module = new_stream.GetWordsStream();
+
+      // -1 is due to removing the instruction OpCapability which is 2 words
+      // long
+      // and adding one instruction one word long.
+      REQUIRE(new_module.size() ==
+              ((size / 4) + (longer_instruction.size() * 3) +
+               longer_instruction_2.size() - 1));
     }
 
-    sut::OpcodeStream new_stream = stream.EmitFilteredStream();
-    std::vector<uint32_t> new_module = new_stream.GetWordsStream();
+    SECTION("Replacing produces an output of the right size") {
+      for (auto &i : stream) {
+        if (i.GetOpcode() == spv::Op::OpCapability) {
+          i.Replace(longer_instruction.data(), longer_instruction.size());
+        }
+      }
 
-    // -1 is due to removing the instruction OpCapability which is 2 words long
-    // and adding one instruction one word long.
-    REQUIRE(new_module.size() == ((size / 4) + (longer_instruction.size() * 3) +
-                                  longer_instruction_2.size() - 1));
+      sut::OpcodeStream new_stream = stream.EmitFilteredStream();
+      std::vector<uint32_t> new_module = new_stream.GetWordsStream();
+
+      // -2 is due to removing the instruction OpCapability which is 2 words
+      // long
+      REQUIRE(new_module.size() ==
+              ((size / 4) + longer_instruction.size() - 2));
+    }
   }
 }
