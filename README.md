@@ -6,13 +6,13 @@ These instructions will get you a copy of the project up and running on your
 local machine for development and testing purposes.
 
 ### Example
-```
+```cpp
 #include <spv_utils.h>
+#include <array>
 #include <cstdint>
 #include <fstream>
 #include <iostream>
 #include <vector>
-#include <array>
 
 int main() {
   // Read spv binary module from a file
@@ -42,10 +42,26 @@ int main() {
         i.InsertBefore(longer_instruction_2.data(),
                        longer_instruction_2.size());
         i.Remove();
+        
+        // Replace() calls Remove(), but is used along with it here to show 
+        // its usage
+        i.Replace(longer_instruction_2.data(),
+                  longer_instruction_2.size());
       }
     }
 
-    std::vector<uint32_t> filtered_stream = stream.EmitFilteredStream();
+    sut::OpcodeStream filtered_stream = stream.EmitFilteredStream();
+    std::vector<uint32_t> filtered_module = filtered_stream.GetWordsStream();
+
+    // Use the filtered module here...
+    // ...
+    //
+
+    std::vector<uint32_t> original_module = stream.GetWordsStream();
+
+    // Use the original module here...
+    // ...
+    //
 
     delete[] data;
     data = nullptr;
