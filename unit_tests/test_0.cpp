@@ -34,7 +34,6 @@ TEST_CASE("spv utils is tested with correct spir-v binary",
   SECTION("Passing correct data ptr and size creates the object") {
     REQUIRE_NOTHROW(sut::OpcodeStream(data, size));
 
-
     uint32_t instruction = 0xDEADBEEF;
     std::array<uint32_t, 4U> longer_instruction = {0xDEADBEEF, 0xDEADBEEF,
                                                    0xDEADBEEF, 0xDEADBEEF};
@@ -83,7 +82,7 @@ TEST_CASE("spv utils is tested with correct spir-v binary",
       REQUIRE(new_module.size() ==
               ((size / 4) + longer_instruction.size() - 2));
     }
-    
+
     SECTION("Inserting does not alter the size of the original raw module") {
       sut::OpcodeStream stream(data, size);
       for (auto &i : stream) {
@@ -96,7 +95,7 @@ TEST_CASE("spv utils is tested with correct spir-v binary",
 
       // -2 is due to removing the instruction OpCapability which is 2 words
       // long
-      REQUIRE(old_module.size() == size / 4 );
+      REQUIRE(old_module.size() == size / 4);
     }
   }
 }
