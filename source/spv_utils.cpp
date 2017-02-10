@@ -54,16 +54,18 @@ OpcodeStream::OpcodeStream(const void *module_stream, size_t binary_size)
 
   ParseModule();
 }
-  
+
 OpcodeStream::OpcodeStream(const std::vector<uint32_t> &module_stream)
     : module_stream_(), offsets_table_() {
   if (module_stream.size() < kSpvIndexInstruction) {
-    throw InvalidParameter("Invalid number of words in the module passed to ctor of OpcodeStream!");
+    throw InvalidParameter(
+        "Invalid number of words in the module passed to ctor of "
+        "OpcodeStream!");
   }
 
   module_stream_.reserve(module_stream.size());
-  module_stream_.insert(
-      module_stream_.begin(), module_stream.begin(), module_stream.end());
+  module_stream_.insert(module_stream_.begin(), module_stream.begin(),
+                        module_stream.end());
 
   // Reserve enough memory for the worst case scenario, where each instruction
   // is one word long
@@ -74,9 +76,11 @@ OpcodeStream::OpcodeStream(const std::vector<uint32_t> &module_stream)
 }
 
 OpcodeStream::OpcodeStream(std::vector<uint32_t> &&module_stream)
-  : module_stream_(std::move(module_stream)), offsets_table_() {
+    : module_stream_(std::move(module_stream)), offsets_table_() {
   if (module_stream_.size() < kSpvIndexInstruction) {
-    throw InvalidParameter("Invalid number of words in the module passed to ctor of OpcodeStream!");
+    throw InvalidParameter(
+        "Invalid number of words in the module passed to ctor of "
+        "OpcodeStream!");
   }
 
   // Reserve enough memory for the worst case scenario, where each instruction
@@ -142,7 +146,9 @@ size_t OpcodeStream::ParseInstructionWordCount(size_t start_index) {
   return static_cast<size_t>(header.words_count);
 }
 
-uint32_t OpcodeStream::PeekAt(size_t index) const { return module_stream_[index]; }
+uint32_t OpcodeStream::PeekAt(size_t index) const {
+  return module_stream_[index];
+}
 
 OpcodeStream OpcodeStream::EmitFilteredStream() const {
   WordsStream new_stream;
@@ -211,10 +217,8 @@ OpcodeStream::const_iterator OpcodeStream::cbegin() const {
 OpcodeStream::const_iterator OpcodeStream::cend() const {
   return offsets_table_.cend();
 }
-  
-size_t OpcodeStream::size() const {
-  return offsets_table_.size();
-}
+
+size_t OpcodeStream::size() const { return offsets_table_.size(); }
 
 OpcodeOffset::OpcodeOffset(size_t offset, std::vector<uint32_t> &words)
     : offset_(offset),
@@ -235,51 +239,56 @@ void OpcodeOffset::InsertBefore(const uint32_t *instructions,
                                 size_t words_count) {
   assert(instructions && words_count);
 
-  size_t new_offset = words_.size();
+  // Offset before new words are inserted
+  size_t previous_offset = words_.size();
 
+  // +1 is for the end marker
+  words_.reserve(previous_offset + words_count + 1);
   words_.insert(words_.end(), instructions, instructions + words_count);
+
   // Add the end marker
   words_.push_back(kMarker);
 
-  // Only set this the first time; afterwards use markers
-  if (insert_before_count_ == 0) {
-    insert_before_offset_ = new_offset;
-    insert_before_count_ = words_count;
-  } else {
-    uint32_t *latest_marker =
-        GetLatestMaker(insert_before_offset_, insert_before_count_);
+  // After the first word of type before has been inserted, always append
+  // in the list and write the marker
+  if (insert_before_count_ != 0) {
+    uint32_t *latest_marker = &words_[words_.size() - 1U];
 
-    // Write at the last marker
-    *latest_marker =
-        ((0xFFFF0000 & (new_offset << 16U)) | (0x0000FFFF & words_count));
+    // Write the marker
+    *latest_marker = ((0xFFFF0000 & (insert_before_offset_ << 16U)) |
+                      (0x0000FFFF & insert_before_count_));
   }
+
+  insert_before_offset_ = previous_offset;
+  insert_before_count_ = words_count;
 }
 
 void OpcodeOffset::InsertAfter(const uint32_t *instructions,
                                size_t words_count) {
   assert(instructions && words_count);
 
-  size_t new_offset = words_.size();
+  // Offset before new words are inserted
+  size_t previous_offset = words_.size();
 
   // +1 is for the end marker
-  words_.reserve(new_offset + words_count + 1);
-
+  words_.reserve(previous_offset + words_count + 1);
   words_.insert(words_.end(), instructions, instructions + words_count);
+
   // Add the end marker
   words_.push_back(kMarker);
 
-  // Only set this the first time; afterwards use markers
-  if (insert_after_count_ == 0) {
-    insert_after_offset_ = new_offset;
-    insert_after_count_ = words_count;
-  } else {
-    uint32_t *latest_marker =
-        GetLatestMaker(insert_after_offset_, insert_after_count_);
+  // After the first word of type after has been inserted, always append
+  // in the list and write the marker
+  if (insert_after_count_ != 0) {
+    uint32_t *latest_marker = &words_[words_.size() - 1U];
 
-    // Write at the last marker
-    *latest_marker =
-        ((0xFFFF0000 & (new_offset << 16U)) | (0x0000FFFF & words_count));
+    // Write the marker
+    *latest_marker = ((0xFFFF0000 & (insert_after_offset_ << 16U)) |
+                      (0x0000FFFF & insert_after_count_));
   }
+
+  insert_after_offset_ = previous_offset;
+  insert_after_count_ = words_count;
 }
 
 uint32_t *OpcodeOffset::GetLatestMaker(size_t initial_offset,

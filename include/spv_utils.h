@@ -35,7 +35,6 @@ class OpcodeOffset final {
   void InsertAfter(const uint32_t *instructions, size_t words_count);
   void Remove();
 
-
  private:
   size_t offset() const { return offset_; }
   bool is_removed() const { return remove_; }
@@ -85,9 +84,7 @@ class OpcodeStream final {
   OpcodeStream EmitFilteredStream() const;
 
   // Get the raw words stream, unfiltered
-  const std::vector<uint32_t> &GetWordsStream() const {
-    return module_stream_;
-  }
+  const std::vector<uint32_t> &GetWordsStream() const { return module_stream_; }
 
  private:
   typedef std::vector<uint32_t> WordsStream;
