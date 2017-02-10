@@ -22,8 +22,8 @@
   SOFTWARE.
 */
 
-#ifndef SPV_UTILS_H
-#define SPV_UTILS_H
+#ifndef SPV_UTILS_H_DSEVTT7Q
+#define SPV_UTILS_H_DSEVTT7Q
 
 #include <cstdint>
 #include <functional>
