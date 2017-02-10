@@ -30,11 +30,22 @@ int main() {
     sut::OpcodeStream stream(data, size);
     for (auto &i : stream) {
       if (i.GetOpcode() == spv::Op::OpCapability) {
-        uint32_t instruction = 0xDEADBEEF;
-        std::array<uint32_t, 4> longer_instruction = {0xDEADBEEF, 0xDEADBEEF,
-                                                    0xDEADBEEF, 0xDEADBEEF};
-        std::array<uint32_t, 4> longer_instruction_2 = {0x1EADBEEF, 0x1EADBEEF,
-                                                      0x1EADBEEF, 0x1EADBEEF};
+        // Use the library's helper struct to define fictitious headers
+        sut::OpcodeHeader header_0 =
+          {1U, static_cast<uint16_t>(spv::Op::OpNop)};
+        sut::OpcodeHeader header_1 =
+          {4U, static_cast<uint16_t>(spv::Op::OpNop)};
+
+        uint32_t instruction_0 = MergeSpvOpCode(header_0);
+        uint32_t instruction_1 = MergeSpvOpCode(header_1);
+
+        std::array<uint32_t, 4U> longer_instruction = 
+          {instruction_1, 0xDEADBEEF,
+           0xDEADBEEF, 0xDEADBEEF};
+        std::array<uint32_t, 4U> longer_instruction_2 =
+          {instruction_1, 0x1EADBEEF,
+           0x1EADBEEF, 0x1EADBEEF};
+
         i.InsertBefore(longer_instruction.data(), longer_instruction.size());
         i.InsertAfter(&instruction, 1U);
         i.InsertAfter(longer_instruction.data(), longer_instruction.size());

@@ -11,6 +11,15 @@
 
 namespace sut {
 
+struct OpcodeHeader final {
+  uint16_t words_count;
+  uint16_t opcode;
+};  // struct OpCodeHeader
+
+OpcodeHeader SplitSpvOpCode(uint32_t word);
+uint32_t MergeSpvOpCode(const OpcodeHeader &header);
+
+
 class OpcodeIterator;
 class OpcodeStream;
 

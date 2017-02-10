@@ -13,17 +13,12 @@ static const size_t kSpvIndexInstruction = 5;
 static const size_t kPendingOpsInitialReserve = 5;
 static const uint32_t kMarker = 0xFFFFFFFF;
 
-struct OpcodeHeader {
-  uint16_t words_count;
-  uint16_t opcode;
-};  // struct OpCodeHeader
-
-static OpcodeHeader SplitSpvOpCode(uint32_t word) {
+OpcodeHeader SplitSpvOpCode(uint32_t word) {
   return {static_cast<uint16_t>((0xFFFF0000 & word) >> 16U),
           static_cast<uint16_t>(0x0000FFFF & word)};
 }
 
-static uint32_t MergeSpvOpCode(const OpcodeHeader &header) {
+uint32_t MergeSpvOpCode(const OpcodeHeader &header) {
   return ((static_cast<uint32_t>(header.words_count) << 16U) |
           (static_cast<uint32_t>(header.opcode)));
 }

@@ -34,10 +34,15 @@ TEST_CASE("spv utils is tested with correct spir-v binary",
   SECTION("Passing correct data ptr and size creates the object") {
     REQUIRE_NOTHROW(sut::OpcodeStream(data, size));
 
-    uint32_t instruction = 0xDEADBEEF;
-    std::array<uint32_t, 4U> longer_instruction = {0xDEADBEEF, 0xDEADBEEF,
+    sut::OpcodeHeader header_0 = {1U, static_cast<uint16_t>(spv::Op::OpNop)};
+    sut::OpcodeHeader header_1 = {4U, static_cast<uint16_t>(spv::Op::OpNop)};
+
+    uint32_t instruction_0 = MergeSpvOpCode(header_0);
+    uint32_t instruction_1 = MergeSpvOpCode(header_1);
+
+    std::array<uint32_t, 4U> longer_instruction = {instruction_1, 0xDEADBEEF,
                                                    0xDEADBEEF, 0xDEADBEEF};
-    std::array<uint32_t, 4U> longer_instruction_2 = {0x1EADBEEF, 0x1EADBEEF,
+    std::array<uint32_t, 4U> longer_instruction_2 = {instruction_1, 0x1EADBEEF,
                                                      0x1EADBEEF, 0x1EADBEEF};
     SECTION(
         "Inserting before, after and removing produces an output of the right "
@@ -46,7 +51,7 @@ TEST_CASE("spv utils is tested with correct spir-v binary",
       for (auto &i : stream) {
         if (i.GetOpcode() == spv::Op::OpCapability) {
           i.InsertBefore(longer_instruction.data(), longer_instruction.size());
-          i.InsertAfter(&instruction, 1U);
+          i.InsertAfter(&instruction_0, 1U);
           i.InsertAfter(longer_instruction.data(), longer_instruction.size());
           i.InsertAfter(longer_instruction.data(), longer_instruction.size());
           i.InsertBefore(longer_instruction_2.data(),
@@ -96,6 +101,32 @@ TEST_CASE("spv utils is tested with correct spir-v binary",
       // -2 is due to removing the instruction OpCapability which is 2 words
       // long
       REQUIRE(old_module.size() == size / 4);
+    }
+
+    SECTION("Using the new stream does not produce errors") {
+      sut::OpcodeStream stream(data, size);
+      for (auto &i : stream) {
+        if (i.GetOpcode() == spv::Op::OpCapability) {
+          i.InsertAfter(longer_instruction.data(), longer_instruction.size());
+        }
+      }
+
+      sut::OpcodeStream new_stream = stream.EmitFilteredStream();
+      std::vector<uint32_t> new_module = new_stream.GetWordsStream();
+
+      REQUIRE(new_module.size() == ((size / 4) + longer_instruction.size()));
+
+      for (auto &i : new_stream) {
+        if (i.GetOpcode() == spv::Op::OpCapability) {
+          i.InsertAfter(longer_instruction.data(), longer_instruction.size());
+        }
+      }
+
+      sut::OpcodeStream new_stream_2 = new_stream.EmitFilteredStream();
+      std::vector<uint32_t> new_module_2 = new_stream_2.GetWordsStream();
+
+      REQUIRE(new_module_2.size() ==
+              ((size / 4) + (longer_instruction.size() * 2)));
     }
   }
 }
