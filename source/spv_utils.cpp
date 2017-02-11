@@ -141,6 +141,9 @@ void OpcodeStream::ParseModule() {
 
   // Append end terminator to table
   InsertOffsetInTable(words_count);
+
+  // Append end terminator to original words stream
+  InsertWordHeaderInOriginalStream({0U, static_cast<uint16_t>(spv::Op::OpNop)});
 }
 
 void OpcodeStream::InsertWordHeaderInOriginalStream(
