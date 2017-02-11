@@ -90,6 +90,10 @@ int main() {
   return 0;
 };
 ```
+## [Documentation](https://github.com/snowzurfer/spirv-utils/wiki/Documentation)
+Please visit the Wiki or click
+[here](https://github.com/snowzurfer/spirv-utils/wiki/Documentation)
+to navigate to it.
 
 ## Installing
 ### CMake usage
