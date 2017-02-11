@@ -125,7 +125,7 @@ TEST_CASE("spv utils is tested with correct spir-v binary",
 
       // -2 is due to removing the instruction OpCapability which is 2 words
       // long
-      REQUIRE(old_module.size() == (size / 4));
+      REQUIRE(old_module.size() == static_cast<size_t>(size / 4));
     }
 
     SECTION("Using the new stream does not produce errors") {
