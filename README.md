@@ -2,8 +2,9 @@
 Library which allows parsing and filtering of a spir-v binary module.
 
 ## Getting Started
-These instructions will get you a copy of the project up and running on your
-local machine for development and testing purposes.
+### Prerequisites
+* CMake 2.8 (or newer); see [below](#no-cmake) for usage 
+  without cmake
 
 ### Example
 ```cpp
@@ -26,8 +27,10 @@ int main() {
     spv_file.read(data, size);
     spv_file.close();
 
-    // Parse the module
+    // Parse the module and create the object
     sut::OpcodeStream stream(data, size);
+
+    // Iterate through the stream of instructions
     for (auto &i : stream) {
       if (i.GetOpcode() == spv::Op::OpCapability) {
         // Use the library's helper struct to define fictitious headers
@@ -46,16 +49,22 @@ int main() {
           {instruction_1, 0x1EADBEEF,
            0x1EADBEEF, 0x1EADBEEF};
 
+        // Append before current instruction in LIFO order
         i.InsertBefore(longer_instruction.data(), longer_instruction.size());
+        // Append after current instruction in LIFO order
         i.InsertAfter(&instruction, 1U);
+        // Append after current instruction in LIFO order
         i.InsertAfter(longer_instruction.data(), longer_instruction.size());
+        // Append after current instruction in LIFO order
         i.InsertAfter(longer_instruction.data(), longer_instruction.size());
+        // Append before current instruction in LIFO order
         i.InsertBefore(longer_instruction_2.data(),
                        longer_instruction_2.size());
+        // Remove the current instruction
         i.Remove();
         
-        // Replace() calls Remove(), but is used along with it here to show 
-        // its usage
+        // Replace() calls Remove(). Also, it will throw if called after 
+        // Remove() or if vice-versa, but it is shown here to explain usage.
         i.Replace(longer_instruction_2.data(),
                   longer_instruction_2.size());
       }
@@ -82,22 +91,19 @@ int main() {
 };
 ```
 
-### Prerequisites
-* CMake 2.8
-
-### Installing
-#### CMake usage
-Clone the repo:
+## Installing
+### CMake usage
+* Clone the repo (or download the zip version):
 ```
 git clone https://github.com/snowzurfer/spirv-utils.git
 ```
 
-Add the project as a subdirectory in your root CMakeLists:
+* Add the project as a subdirectory in your root CMakeLists:
 ```
 add_subdirectory(${PATH_TO_SUT_ROOT_DIR})    
 ```
     
-The CMakeLists defines the library  
+* The CMakeLists defines the library  
 ```
 sut  
 ```
@@ -120,12 +126,21 @@ SUT_BUILD_TESTS
   command-line arguments.
 
 
-Link the library
+* Link the library
 ```
 target_link_libraries(your_target, sut)
 ```
 
-Use the library as shown in the example at the top of the `README`.
+* Use the library as shown in the example at the top of the `README`.
+
+
+### <a name="no-cmake"></a>Usage without CMake
+* Clone the repo (or download the zip version):
+```
+git clone https://github.com/snowzurfer/spirv-utils.git
+```
+* Setup your build to include the main source and include files, plus the
+  external library's files.
 
 ## Running the tests
 Set the option `SUT_BUILD_TESTS` to `ON` and re-build your project.
@@ -142,10 +157,12 @@ in the `CMakeLists` of the `unit_tests` folder.
 * Windows 10 x86_64, Visual Studio 2015, Toolset v140
 
 ## Authors
-* **Alberto Taiuti** - *Developer* - [@snowzurfer](https://github.com/snowzurfer)
+* **Alberto Taiuti** - *Developer* -
+[@snowzurfer](https://github.com/snowzurfer)
 
 ## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
+for details
 
 ## Acknowledgments
 * **Dr Matthäus G. Chajdas** - *Mentoring and design* - [@Anteru](https://github.com/Anteru)
