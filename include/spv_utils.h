@@ -40,11 +40,12 @@ struct OpcodeHeader final {
   uint16_t opcode;
 };  // struct OpCodeHeader
 
+// Split a SPIR-V header word into the words count and the opcode and return
+// this as an OpcodeHeader object
 OpcodeHeader SplitSpvOpCode(uint32_t word);
+// Merge the word count and opcode of an instruction, in form of an OpcodeHeader
+// object, into a word
 uint32_t MergeSpvOpCode(const OpcodeHeader &header);
-
-class OpcodeIterator;
-class OpcodeStream;
 
 class InvalidParameter final : public std::runtime_error {
  public:
@@ -63,12 +64,17 @@ class InvalidOperation final : public std::logic_error {
 
 class OpcodeIterator final {
  public:
+  // Ctor
+  // Construct an iterator given the offset of the instruction which this
+  // iterator refers to and the stream of words this instruction is contained in
   explicit OpcodeIterator(size_t offset, std::vector<uint32_t> &words);
 
   // Get the opcode from the first word of the instruction
   spv::Op GetOpcode() const;
 
+  // Insert instructions stream in LIFO order
   void InsertBefore(const uint32_t *instructions, size_t words_count);
+  // Insert instructions stream in LIFO order
   void InsertAfter(const uint32_t *instructions, size_t words_count);
   void Remove();
   void Replace(const uint32_t *instructions, size_t words_count);
@@ -83,6 +89,7 @@ class OpcodeIterator final {
   size_t replace_offset() const { return replace_offset_; }
   size_t replace_count() const { return replace_count_; }
 
+  // Make the class a friend so that it can access the accessor methods
   friend class OpcodeStream;
 
   // Data relative to this instruction
@@ -113,19 +120,25 @@ class OpcodeStream final {
   explicit OpcodeStream(const std::vector<uint32_t> &module_stream);
   explicit OpcodeStream(std::vector<uint32_t> &&module_stream);
 
+  // Standard iterators which can be used to access the instructions
   iterator begin();
   iterator end();
   const_iterator begin() const;
   const_iterator cbegin() const;
   const_iterator end() const;
   const_iterator cend() const;
+
   // Number of instructions in the stream
   size_t size() const;
 
-  // Apply pending operations and emit filtered stream
+  // Apply pending operations and emit filtered stream into a new object
+  //
+  // This OpcodeStream does not get modified but it still retains the
+  // operations applied to it, so calling EmitFilteredStream() a second time
+  // will produce the same filtered stream
   OpcodeStream EmitFilteredStream() const;
 
-  // Get the raw words stream, unfiltered
+  // Get the raw words stream, unfiltered and non-modified
   std::vector<uint32_t> GetWordsStream() const;
 
  private:
