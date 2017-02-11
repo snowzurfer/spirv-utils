@@ -68,6 +68,7 @@ TEST_CASE("spv utils is tested with correct spir-v binary",
                                                    0xDEADBEEF, 0xDEADBEEF};
     std::array<uint32_t, 4U> longer_instruction_2 = {instruction_1, 0x1EADBEEF,
                                                      0x1EADBEEF, 0x1EADBEEF};
+
     SECTION(
         "Inserting before, after and removing produces an output of the right "
         "size") {
@@ -124,7 +125,7 @@ TEST_CASE("spv utils is tested with correct spir-v binary",
 
       // -2 is due to removing the instruction OpCapability which is 2 words
       // long
-      REQUIRE(old_module.size() == size / 4);
+      REQUIRE(old_module.size() == (size / 4));
     }
 
     SECTION("Using the new stream does not produce errors") {
@@ -151,6 +152,50 @@ TEST_CASE("spv utils is tested with correct spir-v binary",
 
       REQUIRE(new_module_2.size() ==
               ((size / 4) + (longer_instruction.size() * 2)));
+    }
+
+    SECTION("Removing more than once throws") {
+      sut::OpcodeStream stream(data, size);
+      for (auto &i : stream) {
+        if (i.GetOpcode() == spv::Op::OpCapability) {
+          i.Remove();
+          REQUIRE_THROWS_AS(i.Remove(), sut::InvalidOperation);
+        }
+      }
+    }
+
+    SECTION("Replacing more than once throws") {
+      sut::OpcodeStream stream(data, size);
+      for (auto &i : stream) {
+        if (i.GetOpcode() == spv::Op::OpCapability) {
+          i.Replace(longer_instruction.data(), longer_instruction.size());
+          REQUIRE_THROWS_AS(
+              i.Replace(longer_instruction.data(), longer_instruction.size()),
+              sut::InvalidOperation);
+        }
+      }
+    }
+
+    SECTION("Replacing after removing throws") {
+      sut::OpcodeStream stream(data, size);
+      for (auto &i : stream) {
+        if (i.GetOpcode() == spv::Op::OpCapability) {
+          i.Remove();
+          REQUIRE_THROWS_AS(
+              i.Replace(longer_instruction.data(), longer_instruction.size()),
+              sut::InvalidOperation);
+        }
+      }
+    }
+
+    SECTION("Removing after replacing throws") {
+      sut::OpcodeStream stream(data, size);
+      for (auto &i : stream) {
+        if (i.GetOpcode() == spv::Op::OpCapability) {
+          i.Replace(longer_instruction.data(), longer_instruction.size());
+          REQUIRE_THROWS_AS(i.Remove(), sut::InvalidOperation);
+        }
+      }
     }
   }
 }

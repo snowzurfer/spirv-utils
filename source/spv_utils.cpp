@@ -48,10 +48,13 @@ uint32_t MergeSpvOpCode(const OpcodeHeader &header) {
 }
 
 InvalidParameter::InvalidParameter(const std::string &what_arg)
-    : runtime_error(what_arg) {}
+    : std::runtime_error(what_arg) {}
 
 InvalidStream::InvalidStream(const std::string &what_arg)
-    : runtime_error(what_arg) {}
+    : std::runtime_error(what_arg) {}
+
+InvalidOperation::InvalidOperation(const std::string &what_arg)
+    : std::logic_error(what_arg) {}
 
 OpcodeStream::OpcodeStream(const void *module_stream, size_t binary_size)
     : module_stream_(), offsets_table_(), original_module_size_(0) {
@@ -343,10 +346,20 @@ uint32_t *OpcodeIterator::GetLatestMaker(size_t initial_offset,
   return current_marker;
 }
 
-void OpcodeIterator::Remove() { remove_ = true; }
+void OpcodeIterator::Remove() {
+  if (remove_) {
+    throw InvalidOperation("Called Remove() more than once!");
+  }
+
+  remove_ = true;
+}
 
 void OpcodeIterator::Replace(const uint32_t *instructions, size_t words_count) {
   assert(instructions && words_count);
+
+  if (replace_count() > 0) {
+    throw InvalidOperation("Called Replace() more than once!");
+  }
 
   // Since we are replacing, remove the old instruction
   Remove();

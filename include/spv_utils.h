@@ -56,6 +56,11 @@ class InvalidStream final : public std::runtime_error {
   explicit InvalidStream(const std::string &what_arg);
 };  // class InvalidStream
 
+class InvalidOperation final : public std::logic_error {
+ public:
+  explicit InvalidOperation(const std::string &what_arg);
+};  // class InvalidOperation
+
 class OpcodeIterator final {
  public:
   explicit OpcodeIterator(size_t offset, std::vector<uint32_t> &words);
