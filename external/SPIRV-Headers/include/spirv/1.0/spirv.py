@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2016 The Khronos Group Inc.
+# Copyright (c) 2014-2017 The Khronos Group Inc.
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and/or associated documentation files (the "Materials"),
@@ -42,7 +42,7 @@
 spv = {
     'MagicNumber' : 0x07230203,
     'Version' : 0x00010000,
-    'Revision' : 8,
+    'Revision' : 10,
     'OpCodeMask' : 0xffff,
     'WordCountShift' : 16,
 
@@ -347,6 +347,10 @@ spv = {
         'NoContraction' : 42,
         'InputAttachmentIndex' : 43,
         'Alignment' : 44,
+        'OverrideCoverageNV' : 5248,
+        'PassthroughNV' : 5250,
+        'ViewportRelativeNV' : 5252,
+        'SecondaryViewportRelativeNV' : 5256,
     },
 
     'BuiltIn' : {
@@ -399,6 +403,13 @@ spv = {
         'BaseVertex' : 4424,
         'BaseInstance' : 4425,
         'DrawIndex' : 4426,
+        'DeviceIndex' : 4438,
+        'ViewIndex' : 4440,
+        'ViewportMaskNV' : 5253,
+        'SecondaryPositionNV' : 5257,
+        'SecondaryViewportMaskNV' : 5258,
+        'PositionPerViewNV' : 5261,
+        'ViewportMaskPerViewNV' : 5262,
     },
 
     'SelectionControlShift' : {
@@ -566,6 +577,19 @@ spv = {
         'MultiViewport' : 57,
         'SubgroupBallotKHR' : 4423,
         'DrawParameters' : 4427,
+        'SubgroupVoteKHR' : 4431,
+        'StorageUniformBufferBlock16' : 4433,
+        'StorageUniform16' : 4434,
+        'StoragePushConstant16' : 4435,
+        'StorageInputOutput16' : 4436,
+        'DeviceGroup' : 4437,
+        'MultiView' : 4439,
+        'SampleMaskOverrideCoverageNV' : 5249,
+        'GeometryShaderPassthroughNV' : 5251,
+        'ShaderViewportIndexLayerNV' : 5254,
+        'ShaderViewportMaskNV' : 5255,
+        'ShaderStereoViewNV' : 5259,
+        'PerViewAttributesNV' : 5260,
     },
 
     'Op' : {
@@ -865,6 +889,10 @@ spv = {
         'OpImageSparseRead' : 320,
         'OpSubgroupBallotKHR' : 4421,
         'OpSubgroupFirstInvocationKHR' : 4422,
+        'OpSubgroupAllKHR' : 4428,
+        'OpSubgroupAnyKHR' : 4429,
+        'OpSubgroupAllEqualKHR' : 4430,
+        'OpSubgroupReadInvocationKHR' : 4432,
     },
 
 }
