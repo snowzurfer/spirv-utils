@@ -378,4 +378,6 @@ void OpcodeIterator::Replace(const uint32_t *instructions, size_t words_count) {
   replace_count_ = words_count;
 }
 
+uint32_t OpcodeIterator::GetFirstWord() const { return words_[offset_]; }
+
 }  // namespace sut

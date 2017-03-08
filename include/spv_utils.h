@@ -72,6 +72,13 @@ class OpcodeIterator final {
   // Get the opcode from the first word of the instruction
   spv::Op GetOpcode() const;
 
+  // Get the offset in words for this instruction from the beginning of the
+  // stream
+  size_t offset() const { return offset_; }
+
+  // Get the first word of this instruction
+  uint32_t GetFirstWord() const;
+
   // Insert instructions stream in LIFO order
   void InsertBefore(const uint32_t *instructions, size_t words_count);
   // Insert instructions stream in LIFO order
@@ -80,7 +87,6 @@ class OpcodeIterator final {
   void Replace(const uint32_t *instructions, size_t words_count);
 
  private:
-  size_t offset() const { return offset_; }
   bool is_removed() const { return remove_; }
   size_t insert_before_offset() const { return insert_before_offset_; }
   size_t insert_before_count() const { return insert_before_count_; }
