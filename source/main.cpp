@@ -34,7 +34,8 @@ int main() {
       }
     }
 
-    std::vector<uint32_t> filtered_stream = stream.EmitFilteredStream();
+    sut::OpcodeStream filtered_stream = stream.EmitFilteredStream();
+    std::vector<uint32_t> filtered_stream_words = filtered_stream.GetWordsStream();
 
     delete[] data;
     data = nullptr;

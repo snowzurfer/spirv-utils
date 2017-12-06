@@ -105,3 +105,19 @@ option(SUT_BUILD_TESTS "Build the tests" OFF)
 if(SUT_BUILD_TESTS)
   add_subdirectory(unit_tests)
 endif(SUT_BUILD_TESTS)
+
+option(SUT_BUILD_EXAMPLES "Build the examples" ON)
+if(SUT_BUILD_EXAMPLES)
+  add_executable(main_example ${CMAKE_CURRENT_SOURCE_DIR}/source/main.cpp)
+  target_include_directories(main_example PUBLIC
+    ${SUT_SOURCE_DIR}/include 
+    ${SPIRV-HEADERS_SOURCE_DIR}/include)
+  target_link_libraries(main_example sut)
+
+  add_executable(invert_position_y_example ${CMAKE_CURRENT_SOURCE_DIR}/source/invert_position_y.cpp)
+  target_include_directories(invert_position_y_example PUBLIC
+    ${SUT_SOURCE_DIR}/include 
+    ${SPIRV-HEADERS_SOURCE_DIR}/include)
+  target_link_libraries(invert_position_y_example sut)
+endif(SUT_BUILD_EXAMPLES)
+
