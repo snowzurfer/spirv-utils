@@ -71,7 +71,7 @@ class OpcodeIterator final {
 
   // Get the opcode from the first word of the instruction
   spv::Op GetOpcode() const;
-  uint32_t GetWordCount() const;
+  size_t GetWordCount() const;
 
   // Get the offset in words for this instruction from the beginning of the
   // stream

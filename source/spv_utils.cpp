@@ -297,10 +297,10 @@ spv::Op OpcodeIterator::GetOpcode() const {
   return static_cast<spv::Op>(SplitSpvOpCode(header_word).opcode);
 }
 
-uint32_t OpcodeIterator::GetWordCount() const {
+size_t OpcodeIterator::GetWordCount() const {
   uint32_t header_word = words_[offset_];
 
-  return static_cast<uint32_t>(SplitSpvOpCode(header_word).words_count);
+  return static_cast<size_t>(SplitSpvOpCode(header_word).words_count);
 }
 
 void OpcodeIterator::InsertBefore(const uint32_t *instructions,
