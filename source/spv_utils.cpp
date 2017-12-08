@@ -242,6 +242,10 @@ OpcodeStream::iterator OpcodeStream::begin() { return offsets_table_.begin(); }
 
 OpcodeStream::iterator OpcodeStream::end() { return offsets_table_.end(); }
 
+OpcodeStream::reverse_iterator OpcodeStream::rbegin() { return offsets_table_.rbegin(); }
+
+OpcodeStream::reverse_iterator OpcodeStream::rend() { return offsets_table_.rend(); }
+
 OpcodeStream::const_iterator OpcodeStream::end() const {
   return offsets_table_.end();
 }
@@ -256,6 +260,22 @@ OpcodeStream::const_iterator OpcodeStream::cbegin() const {
 
 OpcodeStream::const_iterator OpcodeStream::cend() const {
   return offsets_table_.cend();
+}
+
+OpcodeStream::const_reverse_iterator OpcodeStream::rbegin() const {
+  return offsets_table_.rbegin();
+}
+
+OpcodeStream::const_reverse_iterator OpcodeStream::crbegin() const {
+  return offsets_table_.crbegin();
+}
+
+OpcodeStream::const_reverse_iterator OpcodeStream::rend() const {
+  return offsets_table_.rend();
+}
+
+OpcodeStream::const_reverse_iterator OpcodeStream::crend() const {
+  return offsets_table_.crend();
 }
 
 size_t OpcodeStream::size() const { return offsets_table_.size(); }
@@ -275,6 +295,12 @@ spv::Op OpcodeIterator::GetOpcode() const {
   uint32_t header_word = words_[offset_];
 
   return static_cast<spv::Op>(SplitSpvOpCode(header_word).opcode);
+}
+
+size_t OpcodeIterator::GetWordCount() const {
+  uint32_t header_word = words_[offset_];
+
+  return static_cast<size_t>(SplitSpvOpCode(header_word).words_count);
 }
 
 void OpcodeIterator::InsertBefore(const uint32_t *instructions,

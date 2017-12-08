@@ -71,6 +71,7 @@ class OpcodeIterator final {
 
   // Get the opcode from the first word of the instruction
   spv::Op GetOpcode() const;
+  size_t GetWordCount() const;
 
   // Get the offset in words for this instruction from the beginning of the
   // stream
@@ -78,6 +79,9 @@ class OpcodeIterator final {
 
   // Get the first word of this instruction
   uint32_t GetFirstWord() const;
+
+  // Get a reference to the words to the entire stream
+  std::vector<uint32_t>& GetWords() { return words_; }
 
   // Insert instructions stream in LIFO order
   void InsertBefore(const uint32_t *instructions, size_t words_count);
@@ -120,7 +124,9 @@ class OpcodeStream final {
  public:
   typedef std::vector<OpcodeIterator>::iterator iterator;
   typedef std::vector<OpcodeIterator>::const_iterator const_iterator;
-
+  typedef std::vector<OpcodeIterator>::reverse_iterator reverse_iterator;
+  typedef std::vector<OpcodeIterator>::const_reverse_iterator const_reverse_iterator;
+  
  public:
   explicit OpcodeStream(const void *module_stream, size_t binary_size);
   explicit OpcodeStream(const std::vector<uint32_t> &module_stream);
@@ -129,10 +135,16 @@ class OpcodeStream final {
   // Standard iterators which can be used to access the instructions
   iterator begin();
   iterator end();
+  reverse_iterator rbegin();
+  reverse_iterator rend();
   const_iterator begin() const;
   const_iterator cbegin() const;
   const_iterator end() const;
   const_iterator cend() const;
+  const_reverse_iterator rbegin() const;
+  const_reverse_iterator crbegin() const;
+  const_reverse_iterator rend() const;
+  const_reverse_iterator crend() const;
 
   // Number of instructions in the stream
   size_t size() const;
